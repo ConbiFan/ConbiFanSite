@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="favicon.ico">
+<title>Conbi Fan - Seed Archive</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #0f1220;
+  color: #eaeaf0;
+}
+
+header {
+  padding: 40px 24px;
+  text-align: center;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+main {
+  max-width: 900px;
+  margin: auto;
+  padding: 32px 24px;
+}
+
+h2 {
+  border-left: 6px solid #22c55e;
+  padding-left: 12px;
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: #1e293b;
+  color: #eaeaf0;
+  margin: 12px 0 20px;
+}
+
+.tags button {
+  margin: 6px 6px 0 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: #0b1220;
+  color: #eaeaf0;
+  cursor: pointer;
+}
+
+.tags button.active {
+  background: #22c55e;
+  color: #052e16;
+  font-weight: bold;
+}
+
+.seed-card {
+  background: #1b1f3a;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+.seed {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #86efac;
+}
+
+.copy {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #3b82f6;
+  color: #fff;
+  cursor: pointer;
+}
+
+.copy.done {
+  background: #22c55e;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  padding: 12px 20px;
+  border-radius: 12px;
+  opacity: 0;
+  transition: .3s;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+footer {
+  text-align: center;
+  padding: 24px;
+  background: #0b0e1a;
+  opacity: .7;
+}
+
+a {
+  color: #93c5fd;
+  text-decoration: none;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Seed Archive</h1>
+  <p>Minecraft シード値保管庫</p>
+</header>
+
+<main>
+
+<h2>検索</h2>
+<input id="search" placeholder="シード値・特徴・バージョンで検索">
+
+<h2>タグ</h2>
+<div class="tags" id="tags"></div>
+
+<h2>並び替え</h2>
+<select id="sort">
+  <option value="new">新着</option>
+  <option value="stable">地形安定</option>
+</select>
+
+<div id="list"></div>
+
+<p><a href="index.html">← ホームへ戻る</a></p>
+</main>
+
+<footer>© 2025 Conbi Fan</footer>
+
+<div class="toast" id="toast">シード値をコピーしました。</div>
+
+<script>
+const TAG_LABELS = {
+  village: "村",
+  zombie_village: "ゾンビ村",
+  igloo: "イグルー",
+  mineshaft: "廃坑",
+  nether: "ネザー",
+  terrain: "神地形",
+  ancient_city: "古代都市",
+  trial_chamber: "トライアルチャンバー",
+  shipwreck: "沈没船"
+};
+
+let seeds = [];
+let currentTag = "all";
+
+fetch("./seeds.json")
+  .then(r => r.json())
+  .then(data => {
+    seeds = data;
+    createTagButtons();
+    sortSeeds("new");
+    checkSharedSeed();
+  });
+
+document.getElementById("search").addEventListener("input", renderFiltered);
+document.getElementById("sort").addEventListener("change", e => sortSeeds(e.target.value));
+
+function createTagButtons() {
+  const tagSet = new Set();
+  seeds.forEach(s => s.tags.forEach(t => tagSet.add(t)));
+
+  const tagsDiv = document.getElementById("tags");
+  tagsDiv.innerHTML = "";
+
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "すべて";
+  allBtn.classList.add("active");
+  allBtn.onclick = () => selectTag("all", allBtn);
+  tagsDiv.appendChild(allBtn);
+
+  tagSet.forEach(t => {
+    const b = document.createElement("button");
+    b.textContent = TAG_LABELS[t] || t;
+    b.onclick = () => selectTag(t, b);
+    tagsDiv.appendChild(b);
+  });
+}
+
+function selectTag(tag, btn) {
+  document.querySelectorAll(".tags button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentTag = tag;
+  renderFiltered();
+}
+
+function sortSeeds(type) {
+  if (type === "stable") {
+    seeds.sort((a,b) => (b.stable||0) - (a.stable||0));
+  } else {
+    seeds.sort((a,b) => b.id - a.id);
+  }
+  renderFiltered();
+}
+
+function renderFiltered() {
+  const word = document.getElementById("search").value.toLowerCase();
+
+  const filtered = seeds.filter(s =>
+    (currentTag === "all" || s.tags.includes(currentTag)) &&
+    (
+      s.seed.includes(word) ||
+      s.description.toLowerCase().includes(word) ||
+      s.version.toLowerCase().includes(word)
+    )
+  );
+
+  render(filtered);
+}
+
+function render(list) {
+  const el = document.getElementById("list");
+  el.innerHTML = "";
+  list.forEach(s => el.appendChild(makeCard(s)));
+}
+
+function makeCard(s) {
+  const tagText = s.tags.map(t => TAG_LABELS[t] || t).join(" / ");
+
+  const d = document.createElement("div");
+  d.className = "seed-card";
+  d.innerHTML = `
+    <div class="seed">${s.seed}</div>
+    <p>${s.description}</p>
+    <p>タグ：${tagText}</p>
+    <p>対応バージョン：${s.version}</p>
+    <button class="copy" onclick="copySeed('${s.seed}', this)">コピー</button>
+  `;
+  return d;
+}
+
+function copySeed(seed, btn) {
+  navigator.clipboard.writeText(seed);
+
+  document.querySelectorAll(".copy").forEach(b => {
+    b.textContent = "コピー";
+    b.classList.remove("done");
+  });
+
+  btn.textContent = "✓ コピー済み";
+  btn.classList.add("done");
+
+  history.replaceState(null, "", `?seed=${seed}`);
+  showToast();
+}
+
+function showToast() {
+  const t = document.getElementById("toast");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+function checkSharedSeed() {
+  const p = new URLSearchParams(location.search);
+  const seed = p.get("seed");
+  if (!seed) return;
+  document.getElementById("search").value = seed;
+  renderFiltered();
+}
+</script>
+
+</body>
+</html>
