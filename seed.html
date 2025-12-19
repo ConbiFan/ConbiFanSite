@@ -62,9 +62,9 @@ input, select {
   font-weight: bold;
   color: #86efac;
 }
-.copy, .copy-link {
+.copy, .copy-link, .edition-btn {
   margin-top: 10px;
-  margin-right: 8px;
+  margin-right: 10px;
   padding: 8px 16px;
   border-radius: 8px;
   border: none;
@@ -95,26 +95,11 @@ footer {
   background: #0b0e1a;
   opacity: .7;
 }
-a {
-  color: #93c5fd;
-  text-decoration: none;
-}
-.edition-toggle button {
-  margin: 6px 6px 0 0;
-  padding: 6px 14px;
-  border-radius: 12px;
-  border: none;
-  background: #1e293b;
-  color: #eaeaf0;
-  cursor: pointer;
-}
-.edition-toggle button.active {
-  background: #22c55e;
-  color: #052e16;
-  font-weight: bold;
-}
+a { color: #93c5fd; text-decoration: none; }
+.edition-btn.active { background: #22c55e; color:#052e16; font-weight:bold; }
 </style>
 </head>
+
 <body>
 
 <header>
@@ -123,11 +108,18 @@ a {
 </header>
 
 <main>
+
 <h2>検索</h2>
 <input id="search" placeholder="シード値・特徴・バージョンで検索">
 
 <h2>タグ</h2>
 <div class="tags" id="tags"></div>
+
+<h2>エディション</h2>
+<div id="editionBtns">
+  <button class="edition-btn active" data-edition="java">Java</button>
+  <button class="edition-btn" data-edition="bedrock">Bedrock</button>
+</div>
 
 <h2>並び替え</h2>
 <select id="sort">
@@ -135,18 +127,13 @@ a {
   <option value="stable">地形安定</option>
 </select>
 
-<h2>エディション切替</h2>
-<div class="edition-toggle">
-  <button data-edition="java" class="active">Java</button>
-  <button data-edition="bedrock">Bedrock</button>
-</div>
-
 <div id="list"></div>
+
 <p><a href="index.html">← ホームへ戻る</a></p>
 </main>
 
 <footer>© 2025 Conbi Fan</footer>
-<div class="toast" id="toast">コピーしました。</div>
+<div class="toast" id="toast"></div>
 
 <script>
 const TAG_LABELS = {
@@ -165,28 +152,31 @@ let seeds = [];
 let currentTag = "all";
 let currentEdition = "java";
 
-// JSONロード
 fetch("./seeds.json")
   .then(r => r.json())
   .then(data => {
     seeds = data;
     createTagButtons();
-    setupEditionToggle();
+    setupEditionButtons();
     sortSeeds("new");
     checkSharedSeed();
   });
 
-// タグボタン生成
+document.getElementById("search").addEventListener("input", renderFiltered);
+document.getElementById("sort").addEventListener("change", e => sortSeeds(e.target.value));
+
 function createTagButtons() {
   const tagSet = new Set();
   seeds.forEach(s => s.tags.forEach(t => tagSet.add(t)));
   const tagsDiv = document.getElementById("tags");
   tagsDiv.innerHTML = "";
+
   const allBtn = document.createElement("button");
   allBtn.textContent = "すべて";
   allBtn.classList.add("active");
   allBtn.onclick = () => selectTag("all", allBtn);
   tagsDiv.appendChild(allBtn);
+
   tagSet.forEach(t => {
     const b = document.createElement("button");
     b.textContent = TAG_LABELS[t] || t;
@@ -194,6 +184,7 @@ function createTagButtons() {
     tagsDiv.appendChild(b);
   });
 }
+
 function selectTag(tag, btn) {
   document.querySelectorAll(".tags button").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
@@ -201,28 +192,26 @@ function selectTag(tag, btn) {
   renderFiltered();
 }
 
-// エディション切替
-function setupEditionToggle() {
-  document.querySelectorAll(".edition-toggle button").forEach(b => {
-    b.onclick = () => {
-      document.querySelectorAll(".edition-toggle button").forEach(b2 => b2.classList.remove("active"));
-      b.classList.add("active");
-      currentEdition = b.dataset.edition;
+function setupEditionButtons() {
+  document.querySelectorAll(".edition-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".edition-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentEdition = btn.dataset.edition;
       renderFiltered();
     };
   });
 }
 
-// 並び替え
-document.getElementById("sort").addEventListener("change", e => sortSeeds(e.target.value));
 function sortSeeds(type) {
-  if (type === "stable") seeds.sort((a,b) => (b.stable||0) - (a.stable||0));
-  else seeds.sort((a,b) => b.id - a.id);
+  if (type === "stable") {
+    seeds.sort((a,b) => (b.stable||0) - (a.stable||0));
+  } else {
+    seeds.sort((a,b) => b.id - a.id);
+  }
   renderFiltered();
 }
 
-// 検索・フィルター
-document.getElementById("search").addEventListener("input", renderFiltered);
 function renderFiltered() {
   const word = document.getElementById("search").value.toLowerCase();
   const filtered = seeds.filter(s =>
@@ -233,72 +222,71 @@ function renderFiltered() {
   render(filtered);
 }
 
-// レンダリング
 function render(list) {
   const el = document.getElementById("list");
   el.innerHTML = "";
-  if(list.length===0){
-    el.innerHTML="<p>指定されたシードは見つかりませんでした。</p>";
-    return;
-  }
-  list.forEach(s => {
-    const card = document.createElement("div");
-    card.className = "seed-card";
-    const tagText = s.tags.map(t => TAG_LABELS[t]||t).join(" / ");
-    card.innerHTML = `
-      <div class="seed">${s.seed}</div>
-      <p>${s.description}</p>
-      <p>タグ：${tagText}</p>
-      <p>対応バージョン：${s.version}</p>
-      <button class="copy" onclick="copySeed('${s.seed}', this)">シードコピー</button>
-      <button class="copy-link" onclick="copyLink('${s.seed}')">リンクコピー</button>
-    `;
-    el.appendChild(card);
-  });
+  list.forEach(s => el.appendChild(makeCard(s)));
 }
 
-// シードコピー
+function makeCard(s) {
+  const tagText = s.tags.map(t => TAG_LABELS[t] || t).join(" / ");
+  const d = document.createElement("div");
+  d.className = "seed-card";
+  d.innerHTML = `
+    <div class="seed">${s.seed}</div>
+    <p>${s.description}</p>
+    <p>タグ：${tagText}</p>
+    <p>対応バージョン：${s.version}</p>
+    <button class="copy" onclick="copySeed('${s.seed}', this)">シード値をコピー</button>
+    <button class="copy-link" onclick="copyLink('${s.seed}', this)">リンクをコピー</button>
+  `;
+  return d;
+}
+
 function copySeed(seed, btn) {
   navigator.clipboard.writeText(seed);
-  document.querySelectorAll(".copy").forEach(b => {
-    b.textContent="シード値コピー";
+  resetCopyButtons(".copy");
+  btn.textContent = "✓ コピー済み";
+  btn.classList.add("done");
+  setTimeout(() => { btn.textContent = "シード値をコピー"; btn.classList.remove("done"); }, 2000);
+  showToast("シード値をコピーしました。");
+}
+
+function copyLink(seed, btn) {
+  const url = `${location.origin}${location.pathname}?seed=${seed}${currentEdition ? `&edition=${currentEdition}` : ""}`;
+  navigator.clipboard.writeText(url);
+  resetCopyButtons(".copy-link");
+  btn.textContent = "✓ コピー済み";
+  btn.classList.add("done");
+  setTimeout(() => { btn.textContent = "リンクをコピー"; btn.classList.remove("done"); }, 2000);
+  showToast("リンクをコピーしました。");
+}
+
+function resetCopyButtons(selector){
+  document.querySelectorAll(selector).forEach(b => {
+    b.textContent = b.classList.contains("copy") ? "シード値をコピー" : "リンクをコピー";
     b.classList.remove("done");
   });
-  btn.textContent="✓ コピー済み";
-  btn.classList.add("done");
-  showToast();
-  setTimeout(()=>{btn.textContent="シード値コピー"; btn.classList.remove("done");},2000);
 }
 
-// リンクコピー
-function copyLink(seed){
-  const url = `${location.origin}${location.pathname}?seed=${seed}${currentEdition==="bedrock"?"&edition=bedrock":""}`;
-  navigator.clipboard.writeText(url);
+function showToast(text) {
   const t = document.getElementById("toast");
-  t.textContent="リンクをコピーしました。";
-  showToast();
-  setTimeout(()=>{t.textContent="コピーしました。"},2000);
-}
-
-// トースト表示
-function showToast() {
-  const t = document.getElementById("toast");
+  t.textContent = text;
   t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),1800);
+  setTimeout(() => t.classList.remove("show"), 1800);
 }
 
-// URLクエリで直接表示
-function checkSharedSeed(){
+function checkSharedSeed() {
   const p = new URLSearchParams(location.search);
   const seed = p.get("seed");
   const edition = p.get("edition");
-  if(edition) currentEdition=edition;
-  if(seed) document.getElementById("search").value=seed;
-  // edition切替ボタン更新
-  document.querySelectorAll(".edition-toggle button").forEach(b=>{
-    b.classList.remove("active");
-    if(b.dataset.edition===currentEdition) b.classList.add("active");
-  });
+  if (edition) {
+    currentEdition = edition;
+    document.querySelectorAll(".edition-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector(`.edition-btn[data-edition="${edition}"]`)?.classList.add("active");
+  }
+  if (!seed) return;
+  document.getElementById("search").value = seed;
   renderFiltered();
 }
 </script>
