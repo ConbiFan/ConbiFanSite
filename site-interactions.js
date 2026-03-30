@@ -25,7 +25,6 @@ function normalizeConfig(rawConfig) {
   return {
     supabaseUrl: String(rawConfig.supabaseUrl || "").trim(),
     supabaseAnonKey: String(rawConfig.supabaseAnonKey || "").trim(),
-    reportEmail: String(rawConfig.reportEmail || "").trim(),
     ownerEmail: String(rawConfig.ownerEmail || "").trim().toLowerCase(),
     siteName: String(rawConfig.siteName || document.title || "Conbi Fan").trim(),
     ownerRedirectUrl: String(rawConfig.ownerRedirectUrl || "").trim()
@@ -389,50 +388,55 @@ async function deleteComment(commentId) {
   }
 }
 
-function escapeMailText(value) {
-  return String(value || "").replace(/\r/g, "");
+async function createReport(comment, reason) {
+  const client = await getClient();
+  const user = await ensureVisitorSession();
+  const result = await client.from("engagement_reports").insert({
+    comment_author: comment.display_name,
+    comment_body: comment.body,
+    comment_id: comment.id,
+    item_label: comment.item_label,
+    page_path: comment.page_path,
+    reason: reason,
+    reporter_user_id: user.id,
+    thread_id: comment.thread_id
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
 }
 
-function reportComment(comment) {
-  if (!config.reportEmail) {
-    window.alert("reportEmail がまだ未設定。site-interactions-config.js に入れてくれ。");
-    return;
+async function fetchReports() {
+  const client = await getClient();
+  const result = await client
+    .from("engagement_reports")
+    .select(
+      "id, comment_id, thread_id, page_path, item_label, comment_author, comment_body, reason, created_at, resolved_at"
+    )
+    .order("created_at", { ascending: false });
+
+  if (result.error) {
+    throw result.error;
   }
 
-  const reason = window.prompt("通報理由を入力して。メール本文にそのまま入る。", "");
-  if (reason === null) {
-    return;
+  return result.data || [];
+}
+
+async function resolveReport(reportId) {
+  const client = await getClient();
+  const user = await ensureVisitorSession();
+  const result = await client
+    .from("engagement_reports")
+    .update({
+      resolved_at: new Date().toISOString(),
+      resolved_by: user.id
+    })
+    .eq("id", reportId);
+
+  if (result.error) {
+    throw result.error;
   }
-
-  const subject =
-    "[" +
-    config.siteName +
-    "] コメント通報 - " +
-    (comment.item_label || comment.thread_id || "thread");
-
-  const lines = [
-    "コメントを通報します。",
-    "",
-    "ページ: " + escapeMailText(comment.page_path),
-    "対象: " + escapeMailText(comment.item_label),
-    "投稿者: " + escapeMailText(comment.display_name),
-    "投稿日時: " + escapeMailText(formatDate(comment.created_at)),
-    "コメントID: " + escapeMailText(comment.id),
-    "",
-    "コメント本文:",
-    escapeMailText(comment.body),
-    "",
-    "通報理由:",
-    escapeMailText(reason || "(未入力)")
-  ];
-
-  location.href =
-    "mailto:" +
-    encodeURIComponent(config.reportEmail) +
-    "?subject=" +
-    encodeURIComponent(subject) +
-    "&body=" +
-    encodeURIComponent(lines.join("\n"));
 }
 
 function inferItemLabel(target, fallback) {
@@ -455,7 +459,7 @@ function createSetupNotice() {
   return createElement(
     "div",
     "cf-interactions__setup",
-    "共有コメントを使うには site-interactions-config.js に Supabase のURLとpublishable keyを入れて、SQLを流す必要がある。reportEmail と ownerEmail は通報と削除用。"
+    "共有コメントを使うには site-interactions-config.js に Supabase のURLとpublishable keyを入れて、SQLを流す必要がある。ownerEmail は削除と通報管理用。"
   );
 }
 
@@ -468,12 +472,33 @@ function buildCommentCard(context, comment) {
   const actions = createElement("div", "cf-interactions__comment-actions");
   const reportButton = createElement("button", "cf-interactions__report", "報告");
   reportButton.type = "button";
-  reportButton.disabled = !config.reportEmail;
-  reportButton.title = config.reportEmail
-    ? "メールで通報する"
-    : "reportEmail を設定すると使える";
-  reportButton.addEventListener("click", function () {
-    reportComment(comment);
+  reportButton.title = "このコメントを通報する";
+  reportButton.addEventListener("click", async function () {
+    const reason = window.prompt("通報理由を入力して。ownerページの一覧に入る。", "");
+    if (reason === null) {
+      return;
+    }
+
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      window.alert("通報理由は空だと送れない。");
+      return;
+    }
+
+    context.statusMessage = "報告を送信中...";
+    context.statusTone = "";
+    context.render();
+
+    try {
+      await createReport(comment, trimmedReason);
+      context.statusMessage = "報告した。owner ページの一覧で確認できる。";
+      context.statusTone = "ok";
+      context.render();
+    } catch (error) {
+      context.statusMessage = friendlyError(error);
+      context.statusTone = "error";
+      context.render();
+    }
   });
 
   head.appendChild(author);
@@ -533,6 +558,10 @@ function friendlyError(error) {
     return "権限設定で弾かれてる。SQL のポリシー確認が必要。";
   }
 
+  if (/engagement_reports/i.test(message) && /exist/i.test(message)) {
+    return "通報用テーブルがまだない。更新後の SQL をもう一回流して。";
+  }
+
   return message;
 }
 
@@ -550,7 +579,7 @@ function createWidgetContext(target, options) {
     mode: mode,
     noteText:
       options.note ||
-      "コメントといいねは共有保存される。通報はメール下書きが開く。",
+      "コメントといいねは共有保存される。報告は owner 側の一覧へ送られる。",
     panelOpen: Boolean(options.expanded),
     setupNotice: null,
     statusMessage: "",
@@ -712,9 +741,7 @@ function createWidgetContext(target, options) {
       context.liked = state.liked;
       context.metaText = clientState.owner
         ? "owner として閲覧中。削除ボタンが使える。"
-        : config.reportEmail
-          ? "共有コメントを表示中"
-          : "共有コメントを表示中。reportEmail 未設定なので通報はまだ無効";
+        : "共有コメントを表示中";
       context.statusTone = "";
     } catch (error) {
       context.metaText = "読み込みに失敗";
@@ -1004,13 +1031,19 @@ window.CfInteractions = {
   mountPage: function (target, options) {
     return mountInteraction(target, Object.assign({ mode: "page" }, options || {}));
   },
+  fetchReports: fetchReports,
+  resolveReport: resolveReport,
+  deleteComment: deleteComment,
   signOutCurrentUser: signOutCurrentUser,
   startOwnerMagicLink: startOwnerMagicLink
 };
 
 export {
+  deleteComment,
+  fetchReports,
   getClient,
   isOwnerUser,
+  resolveReport,
   signOutCurrentUser,
   startOwnerMagicLink
 };

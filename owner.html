@@ -84,6 +84,76 @@
       margin-top: 24px;
     }
 
+    .reports {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .reports h2 {
+      margin: 0 0 8px;
+      font-size: 1.35rem;
+    }
+
+    .reports-status {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    .reports-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .report-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .report-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .report-title {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .report-time {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .report-meta {
+      margin: 8px 0;
+      color: var(--muted);
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .report-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(30, 41, 59, 0.85);
+      color: var(--text);
+      white-space: pre-wrap;
+      line-height: 1.65;
+    }
+
+    .report-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
     button,
     a {
       display: inline-flex;
@@ -110,12 +180,17 @@
       background: transparent;
       color: var(--text);
     }
+
+    .danger {
+      background: rgba(239, 68, 68, 0.16);
+      color: #fecaca;
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>Owner Console</h1>
-    <p>ここで owner ログインしておけば、サイト上のコメント削除が自分だけ使える。</p>
+    <p>ここで owner ログインしておけば、サイト上のコメント削除と通報確認が自分だけ使える。</p>
 
     <div class="row">
       <span class="label">ownerEmail</span>
@@ -131,6 +206,12 @@
       <button type="button" class="secondary" data-owner-page-logout hidden>ログアウト</button>
       <a class="secondary" href="index.html">ホームへ戻る</a>
     </div>
+
+    <section class="reports">
+      <h2>通報一覧</h2>
+      <p class="reports-status" data-owner-reports-status>ログインすると表示される。</p>
+      <div class="reports-list" data-owner-reports-list></div>
+    </section>
   </main>
 
   <script src="site-interactions-config.js"></script>
