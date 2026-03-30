@@ -479,7 +479,7 @@ function createSetupNotice() {
   return createElement(
     "div",
     "cf-interactions__setup",
-    "共有コメントを使うには site-interactions-config.js に Supabase のURLとpublishable keyを入れて、SQLを流す必要がある。ownerEmail は削除と通報管理用。"
+    "共有コメントをご利用いただくには、site-interactions-config.js に Supabase の URL と publishable key を設定し、SQL を実行してください。ownerEmail は削除と通報管理に使用されます。"
   );
 }
 
@@ -490,28 +490,28 @@ function buildCommentCard(context, comment) {
   const time = createElement("span", "cf-interactions__time", formatDate(comment.created_at));
   const body = createElement("p", "cf-interactions__body", comment.body);
   const actions = createElement("div", "cf-interactions__comment-actions");
-  const reportButton = createElement("button", "cf-interactions__report", "報告");
+  const reportButton = createElement("button", "cf-interactions__report", "通報");
   reportButton.type = "button";
-  reportButton.title = "このコメントを通報する";
+  reportButton.title = "このコメントを通報します";
   reportButton.addEventListener("click", async function () {
-    const reason = window.prompt("通報理由を入力して。ownerページの一覧に入る。", "");
+    const reason = window.prompt("通報理由をご入力ください。owner ページの一覧に追加されます。", "");
     if (reason === null) {
       return;
     }
 
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      window.alert("通報理由は空だと送れない。");
+      window.alert("通報理由をご入力ください。");
       return;
     }
 
-    context.statusMessage = "報告を送信中...";
+    context.statusMessage = "通報を送信しています...";
     context.statusTone = "";
     context.render();
 
     try {
       await createReport(comment, trimmedReason);
-      context.statusMessage = "報告した。owner ページの一覧で確認できる。";
+      context.statusMessage = "通報を送信しました。owner ページの一覧で確認できます。";
       context.statusTone = "ok";
       context.render();
     } catch (error) {
@@ -529,19 +529,19 @@ function buildCommentCard(context, comment) {
     const deleteButton = createElement("button", "cf-interactions__delete", "削除");
     deleteButton.type = "button";
     deleteButton.addEventListener("click", async function () {
-      const ok = window.confirm("このコメントを消す？");
+      const ok = window.confirm("このコメントを削除しますか？");
       if (!ok) {
         return;
       }
 
-      context.statusMessage = "削除中...";
+      context.statusMessage = "削除しています...";
       context.statusTone = "";
       context.render();
 
       try {
         await deleteComment(comment.id);
         await context.reload();
-        context.statusMessage = "コメントを削除した。";
+        context.statusMessage = "コメントを削除しました。";
         context.statusTone = "ok";
         context.render();
       } catch (error) {
@@ -561,25 +561,25 @@ function buildCommentCard(context, comment) {
 
 function friendlyError(error) {
   if (!error) {
-    return "なんか失敗した。時間を置いてもう一回頼む。";
+    return "処理に失敗しました。時間をおいて再度お試しください。";
   }
 
   const message = String(error.message || error);
 
   if (/anonymous/i.test(message)) {
-    return "Supabase 側で Anonymous sign-ins がオフっぽい。設定を入れてから再読込して。";
+    return "Supabase 側で Anonymous sign-ins が無効になっている可能性があります。設定後に再読み込みしてください。";
   }
 
   if (/Invalid API key/i.test(message) || /401/.test(message)) {
-    return "Supabase の URL か anon key が違う。config を見直して。";
+    return "Supabase の URL または anon key が正しくありません。設定をご確認ください。";
   }
 
   if (/row-level security/i.test(message) || /permission/i.test(message)) {
-    return "権限設定で弾かれてる。SQL のポリシー確認が必要。";
+    return "権限設定により処理が拒否されました。SQL のポリシーをご確認ください。";
   }
 
   if (/engagement_reports/i.test(message) && /exist/i.test(message)) {
-    return "通報用テーブルがまだない。更新後の SQL をもう一回流して。";
+    return "通報用テーブルがまだ作成されていません。更新後の SQL を再度実行してください。";
   }
 
   return message;
@@ -595,11 +595,11 @@ function createWidgetContext(target, options) {
     likeCount: 0,
     liked: false,
     loading: true,
-    metaText: options.metaText || (mode === "page" ? "共有コメントを読み込み中" : "共有リアクションを読み込み中"),
+    metaText: options.metaText || (mode === "page" ? "共有コメントを読み込んでいます" : "共有リアクションを読み込んでいます"),
     mode: mode,
     noteText:
       options.note ||
-      "コメントといいねは共有保存される。報告は owner 側の一覧へ送られる。",
+      "コメントといいねは共有保存されます。通報は owner 側の一覧へ送信されます。",
     panelOpen: Boolean(options.expanded),
     setupNotice: null,
     statusMessage: "",
@@ -626,8 +626,6 @@ function createWidgetContext(target, options) {
   const commentText = createElement("span", "", "コメント");
   const commentCount = createElement("span", "cf-interactions__count", "0");
   const meta = createElement("span", "cf-interactions__meta-text", context.metaText);
-  const ownerChip = createElement("span", "cf-interactions__owner-chip", "owner mode");
-  ownerChip.hidden = true;
   const panel = createElement("div", "cf-interactions__panel");
   const form = createElement("form", "cf-interactions__form");
   const nameField = createElement("label", "cf-interactions__field");
@@ -645,7 +643,7 @@ function createWidgetContext(target, options) {
   );
   const textArea = createElement("textarea", "cf-interactions__textarea");
   textArea.maxLength = MAX_COMMENT_LENGTH;
-  textArea.placeholder = options.placeholder || "感想を書いてみて";
+  textArea.placeholder = options.placeholder || "ご感想をご入力ください";
   const footer = createElement("div", "cf-interactions__footer");
   const note = createElement("span", "cf-interactions__note", context.noteText);
   const submit = createElement("button", "cf-interactions__submit", "送信");
@@ -654,7 +652,7 @@ function createWidgetContext(target, options) {
   const empty = createElement(
     "p",
     "cf-interactions__empty",
-    "まだコメントはない。最初のひとこと、置いていける。"
+    "まだコメントはありません。最初のひとことをぜひお寄せください。"
   );
 
   likeButton.appendChild(likeText);
@@ -664,7 +662,6 @@ function createWidgetContext(target, options) {
   bar.appendChild(likeButton);
   bar.appendChild(commentButton);
   bar.appendChild(meta);
-  bar.appendChild(ownerChip);
 
   nameField.appendChild(nameLabel);
   nameField.appendChild(nameInput);
@@ -698,7 +695,6 @@ function createWidgetContext(target, options) {
     list: list,
     meta: meta,
     nameInput: nameInput,
-    ownerChip: ownerChip,
     panel: panel,
     status: status,
     submit: submit,
@@ -718,7 +714,6 @@ function createWidgetContext(target, options) {
       context.panelOpen ? "true" : "false"
     );
     context.elements.panel.classList.toggle("is-open", context.panelOpen);
-    context.elements.ownerChip.hidden = !clientState.owner;
     context.elements.meta.textContent = context.metaText;
     context.elements.meta.classList.toggle("is-error", context.statusTone === "error");
     context.elements.meta.classList.toggle("is-ok", context.statusTone === "ok");
@@ -740,7 +735,7 @@ function createWidgetContext(target, options) {
     if (!hasSupabaseConfig()) {
       context.loading = false;
       context.statusMessage = "";
-      context.metaText = "共有コメントの設定待ち";
+      context.metaText = "共有コメントの設定をお待ちください";
       if (!context.setupNotice) {
         context.setupNotice = createSetupNotice();
         context.target.appendChild(context.setupNotice);
@@ -751,7 +746,7 @@ function createWidgetContext(target, options) {
 
     context.loading = true;
     context.statusMessage = "";
-    context.metaText = "共有データを読み込み中";
+    context.metaText = "共有データを読み込んでいます";
     context.render();
 
     try {
@@ -760,11 +755,11 @@ function createWidgetContext(target, options) {
       context.likeCount = state.likes;
       context.liked = state.liked;
       context.metaText = clientState.owner
-        ? "owner として閲覧中。削除ボタンが使える。"
-        : "共有コメントを表示中";
+        ? "owner として閲覧中です。削除ボタンが使えます。"
+        : "共有コメントを表示しています";
       context.statusTone = "";
     } catch (error) {
-      context.metaText = "読み込みに失敗";
+      context.metaText = "読み込みに失敗しました";
       context.statusMessage = friendlyError(error);
       context.statusTone = "error";
     } finally {
@@ -776,7 +771,7 @@ function createWidgetContext(target, options) {
   likeButton.addEventListener("click", async function () {
     context.loading = true;
     context.statusMessage = "";
-    context.metaText = "いいねを更新中";
+    context.metaText = "いいねを更新しています";
     context.render();
 
     try {
@@ -813,7 +808,7 @@ function createWidgetContext(target, options) {
     nameInput.value = name;
     context.loading = true;
     context.statusMessage = "";
-    context.metaText = "コメント送信中";
+    context.metaText = "コメントを送信しています";
     context.render();
 
     try {
@@ -821,7 +816,7 @@ function createWidgetContext(target, options) {
       textArea.value = "";
       context.panelOpen = true;
       await context.reload();
-      context.statusMessage = "コメントを送った。";
+      context.statusMessage = "コメントを送信しました。";
       context.statusTone = "ok";
       context.render();
     } catch (error) {
@@ -931,7 +926,7 @@ function renderOwnerConsole() {
 
   if (!hasSupabaseConfig()) {
     elements.status.textContent =
-      "site-interactions-config.js の Supabase 設定がまだ空。";
+      "site-interactions-config.js の Supabase 設定がまだ空です。";
     if (elements.login) {
       elements.login.disabled = true;
     }
@@ -947,7 +942,7 @@ function renderOwnerConsole() {
 
   if (!config.ownerEmail) {
     elements.status.textContent =
-      "ownerEmail が未設定。削除権限はまだ有効化できない。";
+      "ownerEmail が未設定です。削除権限はまだ有効化されていません。";
     if (elements.login) {
       elements.login.hidden = false;
       elements.login.disabled = true;
@@ -960,7 +955,7 @@ function renderOwnerConsole() {
 
   if (clientState.owner) {
     elements.status.textContent =
-      "オーナーとしてログイン中。このブラウザから削除ボタンが使える。";
+      "オーナーとしてログインしています。このブラウザから削除ボタンをご利用いただけます。";
     if (elements.login) {
       elements.login.hidden = true;
     }
@@ -972,7 +967,7 @@ function renderOwnerConsole() {
   }
 
   elements.status.textContent =
-    "まだオーナーログインしてない。owner ページからパスワードで入って。";
+    "まだオーナーログインしていません。owner ページからパスワードでログインしてください。";
   if (elements.login) {
     elements.login.hidden = false;
     elements.login.disabled = false;
@@ -997,11 +992,11 @@ async function setupOwnerConsole() {
   if (elements.logout) {
     elements.logout.addEventListener("click", async function () {
       elements.logout.disabled = true;
-      elements.status.textContent = "ログアウト中...";
+      elements.status.textContent = "ログアウトしています...";
 
       try {
         await signOutCurrentUser();
-        elements.status.textContent = "ログアウトした。";
+        elements.status.textContent = "ログアウトしました。";
       } catch (error) {
         elements.status.textContent = friendlyError(error);
       } finally {

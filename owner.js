@@ -119,7 +119,7 @@ function updateForms() {
 
 async function loadReports() {
   clearReportList();
-  setReportStatus("通報一覧を読み込み中...");
+  setReportStatus("通報一覧を読み込んでいます...");
 
   try {
     const reports = await fetchReports();
@@ -128,7 +128,7 @@ async function loadReports() {
     });
 
     if (!unresolved.length) {
-      setReportStatus("未解決の通報はない。平和。");
+      setReportStatus("未解決の通報はありません。");
       return;
     }
 
@@ -153,7 +153,7 @@ function buildReportCard(report) {
       report.page_path +
       "\n投稿者: " +
       report.comment_author +
-      (report.comment_id ? "" : "\nコメントはすでに削除済み")
+      (report.comment_id ? "" : "\nコメントはすでに削除されています")
   );
   const reasonLabel = createElement("div", "label", "通報理由");
   const reasonBox = createElement("div", "report-box", report.reason);
@@ -167,7 +167,7 @@ function buildReportCard(report) {
   resolveButton.type = "button";
   resolveButton.addEventListener("click", async function () {
     resolveButton.disabled = true;
-    setReportStatus("通報を解決済みにしてる...");
+    setReportStatus("通報を解決済みにしています...");
 
     try {
       await resolveReport(report.id);
@@ -185,13 +185,13 @@ function buildReportCard(report) {
     const deleteButton = createElement("button", "danger", "コメントを削除して解決");
     deleteButton.type = "button";
     deleteButton.addEventListener("click", async function () {
-      const ok = window.confirm("このコメントを削除して、この通報も解決済みにする？");
+      const ok = window.confirm("このコメントを削除し、この通報も解決済みにしますか？");
       if (!ok) {
         return;
       }
 
       deleteButton.disabled = true;
-      setReportStatus("コメント削除と通報解決を処理中...");
+      setReportStatus("コメント削除と通報解決を処理しています...");
 
       try {
         await deleteComment(report.comment_id);
@@ -224,24 +224,24 @@ async function refresh() {
   }
 
   if (!config.supabaseUrl || !config.supabaseAnonKey) {
-    renderStatus("site-interactions-config.js の Supabase 設定がまだ空。");
+    renderStatus("site-interactions-config.js の Supabase 設定がまだ空です。");
     loginButton.disabled = true;
     signupButton.disabled = true;
     resetButton.disabled = true;
     logoutButton.disabled = true;
     clearReportList();
-    setReportStatus("Supabase 設定待ち。");
+    setReportStatus("Supabase 設定をお待ちください。");
     return;
   }
 
   if (!config.ownerEmail) {
-    renderStatus("ownerEmail が未設定。ここに自分のメールを入れるまで削除権限は使えない。");
+    renderStatus("ownerEmail が未設定です。ここにご自身のメールアドレスを設定するまで削除権限はご利用いただけません。");
     loginButton.disabled = true;
     signupButton.disabled = true;
     resetButton.disabled = true;
     logoutButton.hidden = true;
     clearReportList();
-    setReportStatus("ownerEmail を入れると通報一覧も使える。");
+    setReportStatus("ownerEmail を設定すると通報一覧もご利用いただけます。");
     return;
   }
 
@@ -250,7 +250,7 @@ async function refresh() {
   const user = result.data.user;
 
   if (isOwnerUser(user)) {
-    renderStatus("オーナーとしてログイン中。このブラウザからコメント削除と通報確認ができる。");
+    renderStatus("オーナーとしてログインしています。このブラウザからコメント削除と通報確認をご利用いただけます。");
     logoutButton.hidden = false;
     logoutButton.disabled = false;
     if (!recoveryMode) {
@@ -261,13 +261,13 @@ async function refresh() {
 
   renderStatus(
     recoveryMode
-      ? "再設定モード。新しいパスワードを保存してから普通にログインして。"
-      : "ownerEmail とパスワードでログインできる。初回は登録ボタンか再設定ボタンで始められる。"
+      ? "再設定モードです。新しいパスワードを保存してから通常どおりログインしてください。"
+      : "ownerEmail とパスワードでログインできます。初回は登録ボタンまたは再設定ボタンから開始できます。"
   );
   logoutButton.hidden = true;
   clearReportList();
   setReportStatus(
-    recoveryMode ? "新しいパスワードを保存したら通報一覧が見られる。" : "owner ログインするとここに通報一覧が出る。"
+    recoveryMode ? "新しいパスワードを保存すると通報一覧を表示できます。" : "owner としてログインすると、ここに通報一覧が表示されます。"
   );
 }
 
@@ -277,8 +277,8 @@ async function setupRecoveryListener() {
     if (event === "PASSWORD_RECOVERY") {
       recoveryMode = true;
       updateForms();
-      renderStatus("再設定リンクを確認した。新しいパスワードを入れて保存して。");
-      setReportStatus("パスワード再設定が終わるまで通報一覧は非表示。");
+      renderStatus("再設定リンクを確認しました。新しいパスワードを入力して保存してください。");
+      setReportStatus("パスワード再設定が完了するまで通報一覧は表示されません。");
     }
   });
 }
@@ -300,7 +300,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const password = passwordInput.value;
 
     loginButton.disabled = true;
-    renderStatus("ログイン中...");
+    renderStatus("ログインしています...");
 
     try {
       await signInWithPassword(password);
@@ -317,25 +317,25 @@ document.addEventListener("DOMContentLoaded", function () {
     const password = passwordInput.value.trim();
 
     if (password.length < 8) {
-      renderStatus("初回登録するなら、先に8文字以上のパスワードを入れて。");
+      renderStatus("初回登録を行う場合は、先に8文字以上のパスワードをご入力ください。");
       return;
     }
 
     signupButton.disabled = true;
-    renderStatus("初回登録を試してる...");
+    renderStatus("初回登録を行っています...");
 
     try {
       const data = await signUpOwner(password);
       passwordInput.value = "";
 
       if (data.session) {
-        renderStatus("登録できた。このまま owner で入れてる。");
+        renderStatus("登録が完了しました。このまま owner としてログインしています。");
         await refresh();
         return;
       }
 
       renderStatus(
-        "登録リクエストは通ったけど即ログインできてない。Supabase の Confirm email を一時OFFにしてからもう一回やると早い。"
+        "登録リクエストは完了しましたが、すぐにはログインできていません。Supabase の Confirm email を一時的に OFF にしてから再度お試しください。"
       );
     } catch (error) {
       renderStatus(String(error.message || error));
@@ -346,11 +346,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   resetButton.addEventListener("click", async function () {
     resetButton.disabled = true;
-    renderStatus("再設定メールを送信中...");
+    renderStatus("再設定メールを送信しています...");
 
     try {
       await sendPasswordReset();
-      renderStatus("再設定メールを送った。メールのリンクから新しいパスワードを設定して。");
+      renderStatus("再設定メールを送信しました。メール内のリンクから新しいパスワードを設定してください。");
     } catch (error) {
       renderStatus(String(error.message || error));
     } finally {
@@ -363,12 +363,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const newPassword = newPasswordInput.value.trim();
 
     if (newPassword.length < 8) {
-      renderStatus("パスワードは8文字以上にしとくと安定。");
+      renderStatus("パスワードは8文字以上で設定してください。");
       return;
     }
 
     savePasswordButton.disabled = true;
-    renderStatus("新しいパスワードを保存中...");
+    renderStatus("新しいパスワードを保存しています...");
 
     try {
       const client = await getClient();
@@ -383,7 +383,7 @@ document.addEventListener("DOMContentLoaded", function () {
       newPasswordInput.value = "";
       recoveryMode = false;
       updateForms();
-      renderStatus("パスワードを更新した。次からは普通にログインできる。");
+      renderStatus("パスワードを更新しました。次回からは通常どおりログインできます。");
       await refresh();
     } catch (error) {
       renderStatus(String(error.message || error));
@@ -394,13 +394,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   logoutButton.addEventListener("click", async function () {
     logoutButton.disabled = true;
-    renderStatus("ログアウト中...");
+    renderStatus("ログアウトしています...");
 
     try {
       await signOutCurrentUser();
       recoveryMode = false;
       updateForms();
-      renderStatus("ログアウトした。");
+      renderStatus("ログアウトしました。");
       await refresh();
     } catch (error) {
       renderStatus(String(error.message || error));

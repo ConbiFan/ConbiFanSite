@@ -252,10 +252,10 @@ function makeCard(s) {
 
   const interactionHost = document.createElement("div");
   interactionHost.dataset.entryEngagement = `seed-${s.edition}-${s.seed}`;
-  interactionHost.dataset.engagementNote = "コメントといいねは共有保存。報告は owner 側の一覧へ送られる。";
-  interactionHost.dataset.commentPlaceholder = "このシードの第一印象とか、スポーン後の感想をどうぞ";
+  interactionHost.dataset.engagementNote = "コメントといいねは共有保存されます。通報は owner 側の一覧へ送信されます。";
+  interactionHost.dataset.commentPlaceholder = "このシードの第一印象やスポーン後のご感想をご入力ください";
   interactionHost.dataset.formLabel = "このシードへのコメント";
-  interactionHost.dataset.metaText = "プレイした感想を残せる";
+  interactionHost.dataset.metaText = "プレイのご感想を残せます";
   interactionHost.dataset.itemLabel = `Seed ${s.seed} (${s.edition})`;
   d.appendChild(interactionHost);
 
