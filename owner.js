@@ -14,6 +14,7 @@ const resetForm = document.querySelector("[data-owner-reset-form]");
 const passwordInput = document.querySelector("[data-owner-password]");
 const newPasswordInput = document.querySelector("[data-owner-new-password]");
 const loginButton = document.querySelector("[data-owner-page-login]");
+const signupButton = document.querySelector("[data-owner-page-signup]");
 const resetButton = document.querySelector("[data-owner-page-reset]");
 const savePasswordButton = document.querySelector("[data-owner-page-save-password]");
 const logoutButton = document.querySelector("[data-owner-page-logout]");
@@ -90,6 +91,21 @@ async function sendPasswordReset() {
   if (result.error) {
     throw result.error;
   }
+}
+
+async function signUpOwner(password) {
+  const config = getConfig();
+  const client = await getClient();
+  const result = await client.auth.signUp({
+    email: config.ownerEmail,
+    password: password
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data;
 }
 
 function updateForms() {
@@ -210,6 +226,7 @@ async function refresh() {
   if (!config.supabaseUrl || !config.supabaseAnonKey) {
     renderStatus("site-interactions-config.js の Supabase 設定がまだ空。");
     loginButton.disabled = true;
+    signupButton.disabled = true;
     resetButton.disabled = true;
     logoutButton.disabled = true;
     clearReportList();
@@ -220,6 +237,7 @@ async function refresh() {
   if (!config.ownerEmail) {
     renderStatus("ownerEmail が未設定。ここに自分のメールを入れるまで削除権限は使えない。");
     loginButton.disabled = true;
+    signupButton.disabled = true;
     resetButton.disabled = true;
     logoutButton.hidden = true;
     clearReportList();
@@ -244,7 +262,7 @@ async function refresh() {
   renderStatus(
     recoveryMode
       ? "再設定モード。新しいパスワードを保存してから普通にログインして。"
-      : "ownerEmail とパスワードでログインできる。初回は再設定ボタンでパスワード作成でもOK。"
+      : "ownerEmail とパスワードでログインできる。初回は登録ボタンか再設定ボタンで始められる。"
   );
   logoutButton.hidden = true;
   clearReportList();
@@ -292,6 +310,37 @@ document.addEventListener("DOMContentLoaded", function () {
       renderStatus(String(error.message || error));
     } finally {
       loginButton.disabled = false;
+    }
+  });
+
+  signupButton.addEventListener("click", async function () {
+    const password = passwordInput.value.trim();
+
+    if (password.length < 8) {
+      renderStatus("初回登録するなら、先に8文字以上のパスワードを入れて。");
+      return;
+    }
+
+    signupButton.disabled = true;
+    renderStatus("初回登録を試してる...");
+
+    try {
+      const data = await signUpOwner(password);
+      passwordInput.value = "";
+
+      if (data.session) {
+        renderStatus("登録できた。このまま owner で入れてる。");
+        await refresh();
+        return;
+      }
+
+      renderStatus(
+        "登録リクエストは通ったけど即ログインできてない。Supabase の Confirm email を一時OFFにしてからもう一回やると早い。"
+      );
+    } catch (error) {
+      renderStatus(String(error.message || error));
+    } finally {
+      signupButton.disabled = false;
     }
   });
 
