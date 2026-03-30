@@ -3,6 +3,7 @@ import {
   fetchReports,
   getClient,
   isOwnerUser,
+  openConfirmDialog,
   resolveReport,
   signOutCurrentUser
 } from "./site-interactions.js";
@@ -185,7 +186,12 @@ function buildReportCard(report) {
     const deleteButton = createElement("button", "danger", "コメントを削除して解決");
     deleteButton.type = "button";
     deleteButton.addEventListener("click", async function () {
-      const ok = window.confirm("このコメントを削除し、この通報も解決済みにしますか？");
+      const ok = await openConfirmDialog({
+        body: "このコメントを削除し、この通報も解決済みにしますか？この操作は元に戻せません。",
+        confirmText: "削除して解決",
+        title: "コメントを削除",
+        tone: "danger"
+      });
       if (!ok) {
         return;
       }

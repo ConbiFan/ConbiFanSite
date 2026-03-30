@@ -20,6 +20,17 @@ const clientState = {
 
 let clientPromise = null;
 let observerStarted = false;
+const confirmDialogState = {
+  activeElement: null,
+  body: null,
+  cancelButton: null,
+  confirmButton: null,
+  hideTimer: 0,
+  keydownHandler: null,
+  resolver: null,
+  root: null,
+  title: null
+};
 
 function normalizeConfig(rawConfig) {
   return {
@@ -179,6 +190,148 @@ function createElement(tag, className, text) {
     element.textContent = text;
   }
   return element;
+}
+
+function ensureConfirmDialog() {
+  if (confirmDialogState.root) {
+    return confirmDialogState;
+  }
+
+  const root = createElement("div", "cf-modal");
+  root.hidden = true;
+
+  const card = createElement("div", "cf-modal__card");
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+
+  const title = createElement("h3", "cf-modal__title", "確認");
+  const body = createElement("p", "cf-modal__body", "");
+  const actions = createElement("div", "cf-modal__actions");
+  const cancelButton = createElement(
+    "button",
+    "cf-modal__button cf-modal__button--secondary",
+    "キャンセル"
+  );
+  const confirmButton = createElement(
+    "button",
+    "cf-modal__button cf-modal__button--danger",
+    "削除する"
+  );
+
+  title.id = "cf-modal-title";
+  body.id = "cf-modal-body";
+  card.setAttribute("aria-labelledby", title.id);
+  card.setAttribute("aria-describedby", body.id);
+  cancelButton.type = "button";
+  confirmButton.type = "button";
+
+  actions.appendChild(cancelButton);
+  actions.appendChild(confirmButton);
+  card.appendChild(title);
+  card.appendChild(body);
+  card.appendChild(actions);
+  root.appendChild(card);
+  document.body.appendChild(root);
+
+  root.addEventListener("click", function (event) {
+    if (event.target === root) {
+      closeConfirmDialog(false);
+    }
+  });
+
+  cancelButton.addEventListener("click", function () {
+    closeConfirmDialog(false);
+  });
+
+  confirmButton.addEventListener("click", function () {
+    closeConfirmDialog(true);
+  });
+
+  confirmDialogState.root = root;
+  confirmDialogState.title = title;
+  confirmDialogState.body = body;
+  confirmDialogState.cancelButton = cancelButton;
+  confirmDialogState.confirmButton = confirmButton;
+  return confirmDialogState;
+}
+
+function closeConfirmDialog(confirmed) {
+  const dialog = ensureConfirmDialog();
+  if (!dialog.resolver) {
+    return;
+  }
+
+  if (dialog.hideTimer) {
+    window.clearTimeout(dialog.hideTimer);
+    dialog.hideTimer = 0;
+  }
+
+  dialog.root.classList.remove("is-open");
+  document.body.classList.remove("cf-dialog-open");
+
+  if (dialog.keydownHandler) {
+    document.removeEventListener("keydown", dialog.keydownHandler);
+    dialog.keydownHandler = null;
+  }
+
+  const resolver = dialog.resolver;
+  const activeElement = dialog.activeElement;
+
+  dialog.resolver = null;
+  dialog.activeElement = null;
+  dialog.hideTimer = window.setTimeout(function () {
+    dialog.root.hidden = true;
+  }, 160);
+
+  if (activeElement && typeof activeElement.focus === "function") {
+    activeElement.focus();
+  }
+
+  resolver(confirmed);
+}
+
+function openConfirmDialog(options) {
+  const dialog = ensureConfirmDialog();
+  const settings = options || {};
+
+  if (dialog.resolver) {
+    closeConfirmDialog(false);
+  }
+
+  if (dialog.hideTimer) {
+    window.clearTimeout(dialog.hideTimer);
+    dialog.hideTimer = 0;
+  }
+
+  dialog.activeElement =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  dialog.title.textContent = settings.title || "確認";
+  dialog.body.textContent = settings.body || "";
+  dialog.cancelButton.textContent = settings.cancelText || "キャンセル";
+  dialog.confirmButton.textContent = settings.confirmText || "OK";
+  dialog.confirmButton.className =
+    "cf-modal__button " +
+    (settings.tone === "default"
+      ? "cf-modal__button--primary"
+      : "cf-modal__button--danger");
+
+  dialog.root.hidden = false;
+  document.body.classList.add("cf-dialog-open");
+  dialog.keydownHandler = function (event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeConfirmDialog(false);
+    }
+  };
+  document.addEventListener("keydown", dialog.keydownHandler);
+
+  return new Promise(function (resolve) {
+    dialog.resolver = resolve;
+    window.requestAnimationFrame(function () {
+      dialog.root.classList.add("is-open");
+      dialog.confirmButton.focus();
+    });
+  });
 }
 
 function defaultOwnerRedirectUrl() {
@@ -501,7 +654,9 @@ function buildCommentCard(context, comment) {
 
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      window.alert("通報理由をご入力ください。");
+      context.statusMessage = "通報理由をご入力ください。";
+      context.statusTone = "error";
+      context.render();
       return;
     }
 
@@ -529,7 +684,12 @@ function buildCommentCard(context, comment) {
     const deleteButton = createElement("button", "cf-interactions__delete", "削除");
     deleteButton.type = "button";
     deleteButton.addEventListener("click", async function () {
-      const ok = window.confirm("このコメントを削除しますか？");
+      const ok = await openConfirmDialog({
+        body: "このコメントを削除しますか？この操作は元に戻せません。",
+        confirmText: "削除する",
+        title: "コメントを削除",
+        tone: "danger"
+      });
       if (!ok) {
         return;
       }
@@ -1033,6 +1193,7 @@ window.CfInteractions = {
   resolveReport: resolveReport,
   deleteComment: deleteComment,
   signOutCurrentUser: signOutCurrentUser,
+  openConfirmDialog: openConfirmDialog,
   sendOwnerPasswordReset: sendOwnerPasswordReset,
   signInOwnerWithPassword: signInOwnerWithPassword
 };
@@ -1042,6 +1203,7 @@ export {
   fetchReports,
   getClient,
   isOwnerUser,
+  openConfirmDialog,
   resolveReport,
   sendOwnerPasswordReset,
   signOutCurrentUser,
