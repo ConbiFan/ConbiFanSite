@@ -254,7 +254,31 @@ async function ensureVisitorSession() {
   return clientState.user;
 }
 
-async function startOwnerMagicLink() {
+async function signInOwnerWithPassword(password) {
+  const client = await getClient();
+  if (!client) {
+    throw new Error("Supabase の設定がまだ入ってない。");
+  }
+
+  if (!config.ownerEmail) {
+    throw new Error("ownerEmail が未設定。");
+  }
+
+  if (!password) {
+    throw new Error("パスワードを入れて。");
+  }
+
+  const result = await client.auth.signInWithPassword({
+    email: config.ownerEmail,
+    password: password
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+}
+
+async function sendOwnerPasswordReset() {
   const client = await getClient();
   if (!client) {
     throw new Error("Supabase の設定がまだ入ってない。");
@@ -265,12 +289,8 @@ async function startOwnerMagicLink() {
   }
 
   const redirectUrl = config.ownerRedirectUrl || defaultOwnerRedirectUrl();
-  const result = await client.auth.signInWithOtp({
-    email: config.ownerEmail,
-    options: {
-      emailRedirectTo: redirectUrl || undefined,
-      shouldCreateUser: true
-    }
+  const result = await client.auth.resetPasswordForEmail(config.ownerEmail, {
+    redirectTo: redirectUrl || undefined
   });
 
   if (result.error) {
@@ -952,7 +972,7 @@ function renderOwnerConsole() {
   }
 
   elements.status.textContent =
-    "まだオーナーログインしてない。ボタンを押すと magic link を送る。";
+    "まだオーナーログインしてない。owner ページからパスワードで入って。";
   if (elements.login) {
     elements.login.hidden = false;
     elements.login.disabled = false;
@@ -973,23 +993,6 @@ async function setupOwnerConsole() {
   }
 
   renderOwnerConsole();
-
-  if (elements.login) {
-    elements.login.addEventListener("click", async function () {
-      elements.login.disabled = true;
-      elements.status.textContent = "magic link を送信中...";
-
-      try {
-        await startOwnerMagicLink();
-        elements.status.textContent =
-          "メールを送った。受信したリンクをこのサイトで開けば owner になる。";
-      } catch (error) {
-        elements.status.textContent = friendlyError(error);
-      } finally {
-        elements.login.disabled = false;
-      }
-    });
-  }
 
   if (elements.logout) {
     elements.logout.addEventListener("click", async function () {
@@ -1035,7 +1038,8 @@ window.CfInteractions = {
   resolveReport: resolveReport,
   deleteComment: deleteComment,
   signOutCurrentUser: signOutCurrentUser,
-  startOwnerMagicLink: startOwnerMagicLink
+  sendOwnerPasswordReset: sendOwnerPasswordReset,
+  signInOwnerWithPassword: signInOwnerWithPassword
 };
 
 export {
@@ -1044,6 +1048,7 @@ export {
   getClient,
   isOwnerUser,
   resolveReport,
+  sendOwnerPasswordReset,
   signOutCurrentUser,
-  startOwnerMagicLink
+  signInOwnerWithPassword
 };

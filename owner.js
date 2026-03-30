@@ -4,20 +4,29 @@ import {
   getClient,
   isOwnerUser,
   resolveReport,
-  signOutCurrentUser,
-  startOwnerMagicLink
+  sendOwnerPasswordReset,
+  signInOwnerWithPassword,
+  signOutCurrentUser
 } from "./site-interactions.js";
 
 const status = document.querySelector("[data-owner-page-status]");
 const email = document.querySelector("[data-owner-page-email]");
-const login = document.querySelector("[data-owner-page-login]");
-const logout = document.querySelector("[data-owner-page-logout]");
+const loginForm = document.querySelector("[data-owner-login-form]");
+const resetForm = document.querySelector("[data-owner-reset-form]");
+const passwordInput = document.querySelector("[data-owner-password]");
+const newPasswordInput = document.querySelector("[data-owner-new-password]");
+const loginButton = document.querySelector("[data-owner-page-login]");
+const resetButton = document.querySelector("[data-owner-page-reset]");
+const savePasswordButton = document.querySelector("[data-owner-page-save-password]");
+const logoutButton = document.querySelector("[data-owner-page-logout]");
 const reportsStatus = document.querySelector("[data-owner-reports-status]");
 const reportsList = document.querySelector("[data-owner-reports-list]");
 const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
   dateStyle: "short",
   timeStyle: "short"
 });
+
+let recoveryMode = false;
 
 function getConfig() {
   return window.CF_INTERACTIONS_CONFIG || {};
@@ -54,15 +63,19 @@ function clearReportList() {
   }
 }
 
-function render(message) {
-  const config = getConfig();
-  if (email) {
-    email.textContent = config.ownerEmail || "(ownerEmail 未設定)";
-  }
-
+function renderStatus(message) {
   if (message) {
     status.textContent = message;
   }
+}
+
+function updateForms() {
+  if (!loginForm || !resetForm) {
+    return;
+  }
+
+  loginForm.hidden = recoveryMode;
+  resetForm.hidden = !recoveryMode;
 }
 
 async function loadReports() {
@@ -167,24 +180,25 @@ function buildReportCard(report) {
 
 async function refresh() {
   const config = getConfig();
+  if (email) {
+    email.textContent = config.ownerEmail || "(ownerEmail 未設定)";
+  }
+
   if (!config.supabaseUrl || !config.supabaseAnonKey) {
-    render("site-interactions-config.js の Supabase 設定がまだ空。");
-    if (login) {
-      login.disabled = true;
-    }
-    if (logout) {
-      logout.disabled = true;
-    }
+    renderStatus("site-interactions-config.js の Supabase 設定がまだ空。");
+    loginButton.disabled = true;
+    resetButton.disabled = true;
+    logoutButton.disabled = true;
     clearReportList();
     setReportStatus("Supabase 設定待ち。");
     return;
   }
 
   if (!config.ownerEmail) {
-    status.textContent = "ownerEmail が未設定。ここに自分のメールを入れるまで削除権限は使えない。";
-    login.hidden = false;
-    login.disabled = true;
-    logout.hidden = true;
+    renderStatus("ownerEmail が未設定。ここに自分のメールを入れるまで削除権限は使えない。");
+    loginButton.disabled = true;
+    resetButton.disabled = true;
+    logoutButton.hidden = true;
     clearReportList();
     setReportStatus("ownerEmail を入れると通報一覧も使える。");
     return;
@@ -195,55 +209,131 @@ async function refresh() {
   const user = result.data.user;
 
   if (isOwnerUser(user)) {
-    status.textContent = "オーナーとしてログイン中。このブラウザからコメント削除と通報確認ができる。";
-    login.hidden = true;
-    logout.hidden = false;
-    await loadReports();
+    renderStatus("オーナーとしてログイン中。このブラウザからコメント削除と通報確認ができる。");
+    logoutButton.hidden = false;
+    logoutButton.disabled = false;
+    if (!recoveryMode) {
+      await loadReports();
+    }
     return;
   }
 
-  status.textContent = "まだ owner ログインしてない。magic link を送ればすぐ入れる。";
-  login.hidden = false;
-  logout.hidden = true;
+  renderStatus(
+    recoveryMode
+      ? "再設定モード。新しいパスワードを保存してから普通にログインして。"
+      : "ownerEmail とパスワードでログインできる。初回は再設定ボタンでパスワード作成でもOK。"
+  );
+  logoutButton.hidden = true;
   clearReportList();
-  setReportStatus("owner ログインするとここに通報一覧が出る。");
+  setReportStatus(
+    recoveryMode ? "新しいパスワードを保存したら通報一覧が見られる。" : "owner ログインするとここに通報一覧が出る。"
+  );
+}
+
+async function setupRecoveryListener() {
+  const client = await getClient();
+  client.auth.onAuthStateChange(function (event) {
+    if (event === "PASSWORD_RECOVERY") {
+      recoveryMode = true;
+      updateForms();
+      renderStatus("再設定リンクを確認した。新しいパスワードを入れて保存して。");
+      setReportStatus("パスワード再設定が終わるまで通報一覧は非表示。");
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  render();
-  refresh().catch(function (error) {
-    status.textContent = String(error.message || error);
-    setReportStatus(String(error.message || error));
-  });
+  updateForms();
 
-  login.addEventListener("click", async function () {
-    login.disabled = true;
-    status.textContent = "magic link を送信中...";
+  setupRecoveryListener()
+    .then(function () {
+      return refresh();
+    })
+    .catch(function (error) {
+      renderStatus(String(error.message || error));
+      setReportStatus(String(error.message || error));
+    });
+
+  loginForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    const password = passwordInput.value;
+
+    loginButton.disabled = true;
+    renderStatus("ログイン中...");
 
     try {
-      await startOwnerMagicLink();
-      status.textContent =
-        "メールを送った。届いたリンクをこのページかサイト上で開けば owner になる。";
+      await signInOwnerWithPassword(password);
+      passwordInput.value = "";
       await refresh();
     } catch (error) {
-      status.textContent = String(error.message || error);
+      renderStatus(String(error.message || error));
     } finally {
-      login.disabled = false;
+      loginButton.disabled = false;
     }
   });
 
-  logout.addEventListener("click", async function () {
-    logout.disabled = true;
-    status.textContent = "ログアウト中...";
+  resetButton.addEventListener("click", async function () {
+    resetButton.disabled = true;
+    renderStatus("再設定メールを送信中...");
+
+    try {
+      await sendOwnerPasswordReset();
+      renderStatus("再設定メールを送った。メールのリンクから新しいパスワードを設定して。");
+    } catch (error) {
+      renderStatus(String(error.message || error));
+    } finally {
+      resetButton.disabled = false;
+    }
+  });
+
+  resetForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    const newPassword = newPasswordInput.value.trim();
+
+    if (newPassword.length < 8) {
+      renderStatus("パスワードは8文字以上にしとくと安定。");
+      return;
+    }
+
+    savePasswordButton.disabled = true;
+    renderStatus("新しいパスワードを保存中...");
+
+    try {
+      const client = await getClient();
+      const result = await client.auth.updateUser({
+        password: newPassword
+      });
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      newPasswordInput.value = "";
+      recoveryMode = false;
+      updateForms();
+      renderStatus("パスワードを更新した。次からは普通にログインできる。");
+      await refresh();
+    } catch (error) {
+      renderStatus(String(error.message || error));
+    } finally {
+      savePasswordButton.disabled = false;
+    }
+  });
+
+  logoutButton.addEventListener("click", async function () {
+    logoutButton.disabled = true;
+    renderStatus("ログアウト中...");
 
     try {
       await signOutCurrentUser();
-      status.textContent = "ログアウトした。";
+      recoveryMode = false;
+      updateForms();
+      renderStatus("ログアウトした。");
       await refresh();
     } catch (error) {
-      status.textContent = String(error.message || error);
+      renderStatus(String(error.message || error));
     } finally {
-      logout.disabled = false;
+      logoutButton.disabled = false;
     }
   });
 });

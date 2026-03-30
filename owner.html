@@ -84,6 +84,35 @@
       margin-top: 24px;
     }
 
+    .login-form,
+    .reset-form {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.88);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .helper {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
     .reports {
       margin-top: 28px;
       padding-top: 24px;
@@ -201,11 +230,30 @@
       読み込み中...
     </div>
 
-    <div class="actions">
-      <button type="button" data-owner-page-login>magic link を送る</button>
-      <button type="button" class="secondary" data-owner-page-logout hidden>ログアウト</button>
-      <a class="secondary" href="index.html">ホームへ戻る</a>
-    </div>
+    <form class="login-form" data-owner-login-form>
+      <label class="field">
+        <span class="label">パスワード</span>
+        <input class="input" type="password" autocomplete="current-password" data-owner-password />
+      </label>
+      <p class="helper">普通にログインする用。初回設定や忘れたときは下のボタンで再設定メールを飛ばせる。</p>
+      <div class="actions">
+        <button type="submit" data-owner-page-login>ログイン</button>
+        <button type="button" class="secondary" data-owner-page-reset>パスワード再設定</button>
+        <button type="button" class="secondary" data-owner-page-logout hidden>ログアウト</button>
+        <a class="secondary" href="index.html">ホームへ戻る</a>
+      </div>
+    </form>
+
+    <form class="reset-form" data-owner-reset-form hidden>
+      <label class="field">
+        <span class="label">新しいパスワード</span>
+        <input class="input" type="password" autocomplete="new-password" data-owner-new-password />
+      </label>
+      <p class="helper">再設定メールから飛んできたときだけ出る。保存したら普通のログインに戻れる。</p>
+      <div class="actions">
+        <button type="submit" data-owner-page-save-password>新しいパスワードを保存</button>
+      </div>
+    </form>
 
     <section class="reports">
       <h2>通報一覧</h2>
