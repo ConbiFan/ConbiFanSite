@@ -49,6 +49,7 @@
 }
 
 .cf-interactions__action,
+.cf-interactions__report,
 .cf-interactions__submit,
 .cf-interactions__delete {
   border: none;
@@ -61,6 +62,7 @@
 }
 
 .cf-interactions__action:hover,
+.cf-interactions__report:hover,
 .cf-interactions__submit:hover,
 .cf-interactions__delete:hover {
   transform: translateY(-1px);
@@ -84,10 +86,12 @@
 }
 
 .cf-interactions__action:focus-visible,
+.cf-interactions__report:focus-visible,
 .cf-interactions__submit:focus-visible,
 .cf-interactions__delete:focus-visible,
 .cf-interactions__input:focus-visible,
-.cf-interactions__textarea:focus-visible {
+.cf-interactions__textarea:focus-visible,
+.cf-modal__textarea:focus-visible {
   outline: 2px solid var(--cf-accent, #3b82f6);
   outline-offset: 2px;
 }
@@ -306,8 +310,27 @@
   transition: transform 0.16s ease;
 }
 
+.cf-modal__card.is-danger {
+  background:
+    radial-gradient(circle at top right, rgba(239, 68, 68, 0.16), transparent 46%),
+    rgba(15, 23, 42, 0.96);
+}
+
 .cf-modal.is-open .cf-modal__card {
   transform: translateY(0) scale(1);
+}
+
+.cf-modal__eyebrow {
+  margin: 0 0 8px;
+  color: #93c5fd;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cf-modal__card.is-danger .cf-modal__eyebrow {
+  color: #fca5a5;
 }
 
 .cf-modal__title {
@@ -320,6 +343,47 @@
   margin: 0;
   color: #cbd5e1;
   line-height: 1.7;
+}
+
+.cf-modal__field {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.cf-modal__field-label {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.cf-modal__textarea {
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.cf-modal__textarea[aria-invalid="true"] {
+  border-color: rgba(248, 113, 113, 0.72);
+}
+
+.cf-modal__field-hint {
+  color: #94a3b8;
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.cf-modal__field-error {
+  color: #fca5a5;
+  font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 .cf-modal__actions {

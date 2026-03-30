@@ -188,6 +188,7 @@ function buildReportCard(report) {
     deleteButton.addEventListener("click", async function () {
       const ok = await openConfirmDialog({
         body: "このコメントを削除し、この通報も解決済みにしますか？この操作は元に戻せません。",
+        eyebrow: "削除",
         confirmText: "削除して解決",
         title: "コメントを削除",
         tone: "danger"

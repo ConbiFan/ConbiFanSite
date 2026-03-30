@@ -1,6 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const MAX_COMMENT_LENGTH = 280;
+const MAX_REPORT_REASON_LENGTH = 180;
 const DISPLAY_NAME_COOKIE = "cf-display-name";
 const SESSION_COOKIE_BASE = "cf-supabase-auth";
 const COOKIE_CHUNK_SIZE = 3500;
@@ -24,8 +25,18 @@ const confirmDialogState = {
   activeElement: null,
   body: null,
   cancelButton: null,
+  cancelValue: false,
+  card: null,
   confirmButton: null,
+  confirmHandler: null,
+  eyebrow: null,
+  field: null,
+  fieldError: null,
+  fieldHint: null,
+  fieldInput: null,
+  fieldLabel: null,
   hideTimer: 0,
+  initialFocus: null,
   keydownHandler: null,
   resolver: null,
   root: null,
@@ -204,8 +215,14 @@ function ensureConfirmDialog() {
   card.setAttribute("role", "dialog");
   card.setAttribute("aria-modal", "true");
 
+  const eyebrow = createElement("p", "cf-modal__eyebrow", "");
   const title = createElement("h3", "cf-modal__title", "確認");
   const body = createElement("p", "cf-modal__body", "");
+  const field = createElement("label", "cf-modal__field");
+  const fieldLabel = createElement("span", "cf-modal__field-label", "入力");
+  const fieldInput = createElement("textarea", "cf-modal__textarea");
+  const fieldHint = createElement("span", "cf-modal__field-hint", "");
+  const fieldError = createElement("span", "cf-modal__field-error", "");
   const actions = createElement("div", "cf-modal__actions");
   const cancelButton = createElement(
     "button",
@@ -220,42 +237,158 @@ function ensureConfirmDialog() {
 
   title.id = "cf-modal-title";
   body.id = "cf-modal-body";
+  fieldInput.id = "cf-modal-input";
   card.setAttribute("aria-labelledby", title.id);
   card.setAttribute("aria-describedby", body.id);
   cancelButton.type = "button";
   confirmButton.type = "button";
+  field.hidden = true;
+  fieldInput.rows = 5;
+  fieldHint.hidden = true;
+  fieldError.hidden = true;
+  fieldInput.setAttribute("aria-labelledby", title.id);
+
+  field.appendChild(fieldLabel);
+  field.appendChild(fieldInput);
+  field.appendChild(fieldHint);
+  field.appendChild(fieldError);
 
   actions.appendChild(cancelButton);
   actions.appendChild(confirmButton);
+  card.appendChild(eyebrow);
   card.appendChild(title);
   card.appendChild(body);
+  card.appendChild(field);
   card.appendChild(actions);
   root.appendChild(card);
   document.body.appendChild(root);
 
   root.addEventListener("click", function (event) {
     if (event.target === root) {
-      closeConfirmDialog(false);
+      closeConfirmDialog(confirmDialogState.cancelValue);
     }
   });
 
   cancelButton.addEventListener("click", function () {
-    closeConfirmDialog(false);
+    closeConfirmDialog(confirmDialogState.cancelValue);
   });
 
   confirmButton.addEventListener("click", function () {
+    if (typeof confirmDialogState.confirmHandler === "function") {
+      confirmDialogState.confirmHandler();
+      return;
+    }
+
     closeConfirmDialog(true);
   });
 
+  fieldInput.addEventListener("input", function () {
+    fieldError.hidden = true;
+    fieldError.textContent = "";
+    fieldInput.removeAttribute("aria-invalid");
+  });
+
+  fieldInput.addEventListener("keydown", function (event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (typeof confirmDialogState.confirmHandler === "function") {
+        confirmDialogState.confirmHandler();
+      }
+    }
+  });
+
+  confirmDialogState.card = card;
+  confirmDialogState.eyebrow = eyebrow;
   confirmDialogState.root = root;
   confirmDialogState.title = title;
   confirmDialogState.body = body;
+  confirmDialogState.field = field;
+  confirmDialogState.fieldLabel = fieldLabel;
+  confirmDialogState.fieldInput = fieldInput;
+  confirmDialogState.fieldHint = fieldHint;
+  confirmDialogState.fieldError = fieldError;
   confirmDialogState.cancelButton = cancelButton;
   confirmDialogState.confirmButton = confirmButton;
   return confirmDialogState;
 }
 
-function closeConfirmDialog(confirmed) {
+function configureConfirmDialog(options) {
+  const dialog = ensureConfirmDialog();
+  const settings = options || {};
+
+  if (dialog.resolver) {
+    closeConfirmDialog(dialog.cancelValue);
+  }
+
+  if (dialog.hideTimer) {
+    window.clearTimeout(dialog.hideTimer);
+    dialog.hideTimer = 0;
+  }
+
+  dialog.activeElement =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  dialog.cancelValue = Object.prototype.hasOwnProperty.call(settings, "cancelValue")
+    ? settings.cancelValue
+    : false;
+  dialog.confirmHandler = null;
+  dialog.initialFocus = null;
+  dialog.eyebrow.textContent = settings.eyebrow || "";
+  dialog.eyebrow.hidden = !settings.eyebrow;
+  dialog.title.textContent = settings.title || "確認";
+  dialog.body.textContent = settings.body || "";
+  dialog.cancelButton.textContent = settings.cancelText || "キャンセル";
+  dialog.confirmButton.textContent = settings.confirmText || "OK";
+  dialog.confirmButton.className =
+    "cf-modal__button " +
+    (settings.tone === "danger"
+      ? "cf-modal__button--danger"
+      : "cf-modal__button--primary");
+  dialog.card.classList.toggle("is-danger", settings.tone === "danger");
+  dialog.card.classList.toggle("is-primary", settings.tone !== "danger");
+  dialog.field.hidden = true;
+  dialog.fieldLabel.textContent = "入力";
+  dialog.fieldInput.value = "";
+  dialog.fieldInput.placeholder = "";
+  dialog.fieldInput.removeAttribute("maxlength");
+  dialog.fieldInput.removeAttribute("aria-invalid");
+  dialog.fieldHint.hidden = true;
+  dialog.fieldHint.textContent = "";
+  dialog.fieldError.hidden = true;
+  dialog.fieldError.textContent = "";
+  return dialog;
+}
+
+function showConfirmDialog(dialog) {
+  dialog.root.hidden = false;
+  document.body.classList.add("cf-dialog-open");
+  dialog.keydownHandler = function (event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeConfirmDialog(dialog.cancelValue);
+    }
+  };
+  document.addEventListener("keydown", dialog.keydownHandler);
+
+  return new Promise(function (resolve) {
+    dialog.resolver = resolve;
+    window.requestAnimationFrame(function () {
+      dialog.root.classList.add("is-open");
+      const focusTarget = dialog.initialFocus || dialog.confirmButton;
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus();
+        if (
+          focusTarget === dialog.fieldInput &&
+          typeof focusTarget.setSelectionRange === "function"
+        ) {
+          const end = focusTarget.value.length;
+          focusTarget.setSelectionRange(end, end);
+        }
+      }
+    });
+  });
+}
+
+function closeConfirmDialog(result) {
   const dialog = ensureConfirmDialog();
   if (!dialog.resolver) {
     return;
@@ -279,6 +412,8 @@ function closeConfirmDialog(confirmed) {
 
   dialog.resolver = null;
   dialog.activeElement = null;
+  dialog.confirmHandler = null;
+  dialog.initialFocus = null;
   dialog.hideTimer = window.setTimeout(function () {
     dialog.root.hidden = true;
   }, 160);
@@ -287,51 +422,56 @@ function closeConfirmDialog(confirmed) {
     activeElement.focus();
   }
 
-  resolver(confirmed);
+  resolver(result);
 }
 
 function openConfirmDialog(options) {
-  const dialog = ensureConfirmDialog();
-  const settings = options || {};
-
-  if (dialog.resolver) {
-    closeConfirmDialog(false);
-  }
-
-  if (dialog.hideTimer) {
-    window.clearTimeout(dialog.hideTimer);
-    dialog.hideTimer = 0;
-  }
-
-  dialog.activeElement =
-    document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  dialog.title.textContent = settings.title || "確認";
-  dialog.body.textContent = settings.body || "";
-  dialog.cancelButton.textContent = settings.cancelText || "キャンセル";
-  dialog.confirmButton.textContent = settings.confirmText || "OK";
-  dialog.confirmButton.className =
-    "cf-modal__button " +
-    (settings.tone === "default"
-      ? "cf-modal__button--primary"
-      : "cf-modal__button--danger");
-
-  dialog.root.hidden = false;
-  document.body.classList.add("cf-dialog-open");
-  dialog.keydownHandler = function (event) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeConfirmDialog(false);
-    }
+  const dialog = configureConfirmDialog(options);
+  dialog.initialFocus = dialog.cancelButton;
+  dialog.confirmHandler = function () {
+    closeConfirmDialog(true);
   };
-  document.addEventListener("keydown", dialog.keydownHandler);
+  return showConfirmDialog(dialog);
+}
 
-  return new Promise(function (resolve) {
-    dialog.resolver = resolve;
-    window.requestAnimationFrame(function () {
-      dialog.root.classList.add("is-open");
-      dialog.confirmButton.focus();
-    });
-  });
+function openReportDialog(options) {
+  const settings = options || {};
+  const dialog = configureConfirmDialog(
+    Object.assign(
+      {
+        body: "確認に必要な理由をご入力ください。",
+        cancelText: "やめる",
+        cancelValue: null,
+        confirmText: "送信する",
+        tone: "default"
+      },
+      settings
+    )
+  );
+
+  dialog.field.hidden = false;
+  dialog.fieldLabel.textContent = settings.label || "通報理由";
+  dialog.fieldInput.value = settings.value || "";
+  dialog.fieldInput.placeholder = settings.placeholder || "";
+  dialog.fieldInput.maxLength = settings.maxLength || MAX_REPORT_REASON_LENGTH;
+  dialog.fieldHint.textContent = settings.hint || "";
+  dialog.fieldHint.hidden = !settings.hint;
+  dialog.initialFocus = dialog.fieldInput;
+  dialog.confirmHandler = function () {
+    const value = dialog.fieldInput.value.trim();
+    if (!value) {
+      dialog.fieldError.textContent =
+        settings.errorText || "通報理由をご入力ください。";
+      dialog.fieldError.hidden = false;
+      dialog.fieldInput.setAttribute("aria-invalid", "true");
+      dialog.fieldInput.focus();
+      return;
+    }
+
+    closeConfirmDialog(value);
+  };
+
+  return showConfirmDialog(dialog);
 }
 
 function defaultOwnerRedirectUrl() {
@@ -647,16 +787,17 @@ function buildCommentCard(context, comment) {
   reportButton.type = "button";
   reportButton.title = "このコメントを通報します";
   reportButton.addEventListener("click", async function () {
-    const reason = window.prompt("通報理由をご入力ください。owner ページの一覧に追加されます。", "");
-    if (reason === null) {
-      return;
-    }
-
-    const trimmedReason = reason.trim();
-    if (!trimmedReason) {
-      context.statusMessage = "通報理由をご入力ください。";
-      context.statusTone = "error";
-      context.render();
+    const reason = await openReportDialog({
+      body: "問題の内容が分かるように、通報理由をご入力ください。送信した内容は owner ページの一覧で確認されます。",
+      eyebrow: "通報",
+      confirmText: "通報する",
+      errorText: "通報理由をご入力ください。",
+      hint: "短くても大丈夫です。内容が分かる文章でご入力ください。",
+      label: "通報理由",
+      placeholder: "例: 不快な表現が含まれています",
+      title: "コメントを通報"
+    });
+    if (!reason) {
       return;
     }
 
@@ -665,7 +806,7 @@ function buildCommentCard(context, comment) {
     context.render();
 
     try {
-      await createReport(comment, trimmedReason);
+      await createReport(comment, reason);
       context.statusMessage = "通報を送信しました。owner ページの一覧で確認できます。";
       context.statusTone = "ok";
       context.render();
@@ -686,6 +827,7 @@ function buildCommentCard(context, comment) {
     deleteButton.addEventListener("click", async function () {
       const ok = await openConfirmDialog({
         body: "このコメントを削除しますか？この操作は元に戻せません。",
+        eyebrow: "削除",
         confirmText: "削除する",
         title: "コメントを削除",
         tone: "danger"
