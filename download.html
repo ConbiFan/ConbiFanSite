@@ -6,7 +6,13 @@
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="apple-touch-icon" href="favicon.png">
   <title>Conbi Fan - ダウンロード</title>
+  <link rel="stylesheet" href="site-interactions.css">
   <style>
+    :root {
+      --cf-accent: #3b82f6;
+      --cf-accent-soft: rgba(59, 130, 246, 0.2);
+    }
+
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
@@ -34,37 +40,72 @@
 <body>
   <h1>作品ダウンロード</h1>
 
-  <div class="download-card">
+  <div
+    class="download-card"
+    data-entry-engagement="download-badmod"
+    data-engagement-note="コメントといいねは共有保存。報告はメールで送れる。"
+    data-comment-placeholder="理不尽ポイントとか、好きだった要素とか書ける"
+    data-form-label="Bad Mod の感想"
+    data-meta-text="遊んだ感想を残せる"
+    data-item-label="Bad Mod"
+  >
     <h2>Bad Mod</h2>
     <p>マイクラが理不尽になるModです(対応環境はForge 1.20.1)
     </p>
     <a href="downloads/badmod-1.0.0-forge-1.20.1.jar" download>ダウンロード</a>
   </div>
 
-  <div class="download-card">
+  <div
+    class="download-card"
+    data-entry-engagement="download-joinleavemessage"
+    data-engagement-note="コメントといいねは共有保存。報告はメールで送れる。"
+    data-comment-placeholder="使ってみた感想とか、入れたサーバーの雰囲気とかどうぞ"
+    data-form-label="JoinLeaveMessage Plugin の感想"
+    data-meta-text="使った感想を残せる"
+    data-item-label="JoinLeaveMessage Plugin"
+  >
     <h2>JoinLeaveMessage Plugin</h2>
     <p>Java用のプラグインです(対応環境は1.8から)
     </p>
     <a href="downloads/JoinLeaveMessages-1.0.jar" download>ダウンロード</a>
   </div>
 
-  <div class="download-card">
+  <div
+    class="download-card"
+    data-entry-engagement="download-mini-conbi-fan-addon"
+    data-engagement-note="コメントといいねは共有保存。報告はメールで送れる。"
+    data-comment-placeholder="遊んだ感想とか、スクショ欲が出た場面とかどうぞ"
+    data-form-label="Mini Conbi Fan Addon の感想"
+    data-meta-text="反応を置いていける"
+    data-item-label="Mini Conbi Fan Addon"
+  >
     <h2>Mini Conbi Fan Addon</h2>
     <p>マイクラ統合版にMini Conbi Fanを追加します。
     </p>
     <a href="downloads/Mini Conbi Fan Addon.mcaddon" download>ダウンロード</a>
   </div>
 
-  <div class="download-card">
+  <div
+    class="download-card"
+    data-entry-engagement="download-random-effect"
+    data-engagement-note="コメントといいねは共有保存。報告はメールで送れる。"
+    data-comment-placeholder="刺さったエフェクト事故とか、遊んだ感想とかどうぞ"
+    data-form-label="Random Effect の感想"
+    data-meta-text="プレイ感想を残せる"
+    data-item-label="Random Effect"
+  >
     <h2>Random Effect</h2>
     <p>マイクラで5分ごとにプレイヤーにランダムなエフェクトを30秒間付与するデータパックです。（対応環境は通常の1.21.5）
     </p>
-    <a href="downloads/RandomEffect-1.0.zip" download>ダウンロード</a>
+    <a href="downloads/Random Effect.zip" download>ダウンロード</a>
   </div>
 
   <p style="text-align:center; margin-top:40px;">
     <a href="index.html">← ホームへ戻る</a>
   </p>
+
+  <script src="site-interactions-config.js"></script>
+  <script type="module" src="site-interactions.js"></script>
 </body>
 
 </html>
