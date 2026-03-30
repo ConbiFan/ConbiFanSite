@@ -4,8 +4,6 @@ import {
   getClient,
   isOwnerUser,
   resolveReport,
-  sendOwnerPasswordReset,
-  signInOwnerWithPassword,
   signOutCurrentUser
 } from "./site-interactions.js";
 
@@ -66,6 +64,31 @@ function clearReportList() {
 function renderStatus(message) {
   if (message) {
     status.textContent = message;
+  }
+}
+
+async function signInWithPassword(password) {
+  const config = getConfig();
+  const client = await getClient();
+  const result = await client.auth.signInWithPassword({
+    email: config.ownerEmail,
+    password: password
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+}
+
+async function sendPasswordReset() {
+  const config = getConfig();
+  const client = await getClient();
+  const result = await client.auth.resetPasswordForEmail(config.ownerEmail, {
+    redirectTo: config.ownerRedirectUrl || undefined
+  });
+
+  if (result.error) {
+    throw result.error;
   }
 }
 
@@ -262,7 +285,7 @@ document.addEventListener("DOMContentLoaded", function () {
     renderStatus("ログイン中...");
 
     try {
-      await signInOwnerWithPassword(password);
+      await signInWithPassword(password);
       passwordInput.value = "";
       await refresh();
     } catch (error) {
@@ -277,7 +300,7 @@ document.addEventListener("DOMContentLoaded", function () {
     renderStatus("再設定メールを送信中...");
 
     try {
-      await sendOwnerPasswordReset();
+      await sendPasswordReset();
       renderStatus("再設定メールを送った。メールのリンクから新しいパスワードを設定して。");
     } catch (error) {
       renderStatus(String(error.message || error));
