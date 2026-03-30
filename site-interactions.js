@@ -27,15 +27,23 @@ const confirmDialogState = {
   cancelButton: null,
   cancelValue: false,
   card: null,
+  chrome: null,
+  chromeLabel: null,
+  chromeState: null,
   confirmButton: null,
   confirmHandler: null,
   eyebrow: null,
   field: null,
   fieldError: null,
+  fieldCounter: null,
+  fieldInfo: null,
   fieldHint: null,
   fieldInput: null,
   fieldLabel: null,
   hideTimer: 0,
+  infoList: null,
+  infoPanel: null,
+  infoTitle: null,
   initialFocus: null,
   keydownHandler: null,
   resolver: null,
@@ -203,6 +211,40 @@ function createElement(tag, className, text) {
   return element;
 }
 
+function setDialogInfo(dialog, title, items) {
+  const safeItems = Array.isArray(items)
+    ? items.filter(function (item) {
+        return typeof item === "string" && item.trim();
+      })
+    : [];
+
+  dialog.infoTitle.textContent = title || "";
+  dialog.infoList.innerHTML = "";
+
+  safeItems.forEach(function (item) {
+    dialog.infoList.appendChild(createElement("li", "cf-modal__info-item", item));
+  });
+
+  dialog.infoPanel.hidden = !safeItems.length;
+}
+
+function updateDialogFieldCounter(dialog) {
+  if (!dialog.fieldCounter) {
+    return;
+  }
+
+  const maxLength = Number(dialog.fieldInput.maxLength) || 0;
+  if (dialog.field.hidden || !maxLength) {
+    dialog.fieldCounter.hidden = true;
+    dialog.fieldCounter.textContent = "";
+    return;
+  }
+
+  dialog.fieldCounter.hidden = false;
+  dialog.fieldCounter.textContent =
+    dialog.fieldInput.value.length + " / " + maxLength;
+}
+
 function ensureConfirmDialog() {
   if (confirmDialogState.root) {
     return confirmDialogState;
@@ -215,11 +257,19 @@ function ensureConfirmDialog() {
   card.setAttribute("role", "dialog");
   card.setAttribute("aria-modal", "true");
 
+  const chrome = createElement("div", "cf-modal__chrome");
+  const chromeLabel = createElement("span", "cf-modal__chrome-label", "");
+  const chromeState = createElement("span", "cf-modal__chrome-state", "");
   const eyebrow = createElement("p", "cf-modal__eyebrow", "");
   const title = createElement("h3", "cf-modal__title", "確認");
   const body = createElement("p", "cf-modal__body", "");
+  const infoPanel = createElement("div", "cf-modal__info");
+  const infoTitle = createElement("p", "cf-modal__info-title", "");
+  const infoList = createElement("ul", "cf-modal__info-list");
   const field = createElement("label", "cf-modal__field");
+  const fieldInfo = createElement("span", "cf-modal__field-head");
   const fieldLabel = createElement("span", "cf-modal__field-label", "入力");
+  const fieldCounter = createElement("span", "cf-modal__field-counter", "");
   const fieldInput = createElement("textarea", "cf-modal__textarea");
   const fieldHint = createElement("span", "cf-modal__field-hint", "");
   const fieldError = createElement("span", "cf-modal__field-error", "");
@@ -242,22 +292,33 @@ function ensureConfirmDialog() {
   card.setAttribute("aria-describedby", body.id);
   cancelButton.type = "button";
   confirmButton.type = "button";
+  chrome.hidden = true;
+  infoPanel.hidden = true;
   field.hidden = true;
   fieldInput.rows = 5;
+  fieldCounter.hidden = true;
   fieldHint.hidden = true;
   fieldError.hidden = true;
   fieldInput.setAttribute("aria-labelledby", title.id);
 
-  field.appendChild(fieldLabel);
+  chrome.appendChild(chromeLabel);
+  chrome.appendChild(chromeState);
+  infoPanel.appendChild(infoTitle);
+  infoPanel.appendChild(infoList);
+  fieldInfo.appendChild(fieldLabel);
+  fieldInfo.appendChild(fieldCounter);
+  field.appendChild(fieldInfo);
   field.appendChild(fieldInput);
   field.appendChild(fieldHint);
   field.appendChild(fieldError);
 
   actions.appendChild(cancelButton);
   actions.appendChild(confirmButton);
+  card.appendChild(chrome);
   card.appendChild(eyebrow);
   card.appendChild(title);
   card.appendChild(body);
+  card.appendChild(infoPanel);
   card.appendChild(field);
   card.appendChild(actions);
   root.appendChild(card);
@@ -286,6 +347,7 @@ function ensureConfirmDialog() {
     fieldError.hidden = true;
     fieldError.textContent = "";
     fieldInput.removeAttribute("aria-invalid");
+    updateDialogFieldCounter(confirmDialogState);
   });
 
   fieldInput.addEventListener("keydown", function (event) {
@@ -298,12 +360,20 @@ function ensureConfirmDialog() {
   });
 
   confirmDialogState.card = card;
+  confirmDialogState.chrome = chrome;
+  confirmDialogState.chromeLabel = chromeLabel;
+  confirmDialogState.chromeState = chromeState;
   confirmDialogState.eyebrow = eyebrow;
   confirmDialogState.root = root;
   confirmDialogState.title = title;
   confirmDialogState.body = body;
+  confirmDialogState.infoPanel = infoPanel;
+  confirmDialogState.infoTitle = infoTitle;
+  confirmDialogState.infoList = infoList;
   confirmDialogState.field = field;
+  confirmDialogState.fieldInfo = fieldInfo;
   confirmDialogState.fieldLabel = fieldLabel;
+  confirmDialogState.fieldCounter = fieldCounter;
   confirmDialogState.fieldInput = fieldInput;
   confirmDialogState.fieldHint = fieldHint;
   confirmDialogState.fieldError = fieldError;
@@ -332,10 +402,16 @@ function configureConfirmDialog(options) {
     : false;
   dialog.confirmHandler = null;
   dialog.initialFocus = null;
+  dialog.root.classList.toggle("is-report", Boolean(settings.reportMode));
+  dialog.card.classList.toggle("is-report", Boolean(settings.reportMode));
   dialog.eyebrow.textContent = settings.eyebrow || "";
   dialog.eyebrow.hidden = !settings.eyebrow;
   dialog.title.textContent = settings.title || "確認";
   dialog.body.textContent = settings.body || "";
+  dialog.chromeLabel.textContent = settings.chromeLabel || "";
+  dialog.chromeState.textContent = settings.chromeState || "";
+  dialog.chrome.hidden = !dialog.chromeLabel.textContent && !dialog.chromeState.textContent;
+  setDialogInfo(dialog, settings.infoTitle || "", settings.infoItems || []);
   dialog.cancelButton.textContent = settings.cancelText || "キャンセル";
   dialog.confirmButton.textContent = settings.confirmText || "OK";
   dialog.confirmButton.className =
@@ -351,6 +427,8 @@ function configureConfirmDialog(options) {
   dialog.fieldInput.placeholder = "";
   dialog.fieldInput.removeAttribute("maxlength");
   dialog.fieldInput.removeAttribute("aria-invalid");
+  dialog.fieldCounter.hidden = true;
+  dialog.fieldCounter.textContent = "";
   dialog.fieldHint.hidden = true;
   dialog.fieldHint.textContent = "";
   dialog.fieldError.hidden = true;
@@ -442,7 +520,16 @@ function openReportDialog(options) {
         body: "確認に必要な理由をご入力ください。",
         cancelText: "やめる",
         cancelValue: null,
+        chromeLabel: "REPORT LINK",
+        chromeState: "OWNER QUEUE",
         confirmText: "送信する",
+        infoItems: [
+          "送信した内容は owner ページの通報一覧へ追加されます。",
+          "owner が確認し、必要に応じてコメント削除などを行います。",
+          "短くても大丈夫なので、問題点が伝わる内容で入力してください。"
+        ],
+        infoTitle: "送信後の流れ",
+        reportMode: true,
         tone: "default"
       },
       settings
@@ -457,6 +544,7 @@ function openReportDialog(options) {
   dialog.fieldHint.textContent = settings.hint || "";
   dialog.fieldHint.hidden = !settings.hint;
   dialog.initialFocus = dialog.fieldInput;
+  updateDialogFieldCounter(dialog);
   dialog.confirmHandler = function () {
     const value = dialog.fieldInput.value.trim();
     if (!value) {
@@ -783,16 +871,31 @@ function buildCommentCard(context, comment) {
   const time = createElement("span", "cf-interactions__time", formatDate(comment.created_at));
   const body = createElement("p", "cf-interactions__body", comment.body);
   const actions = createElement("div", "cf-interactions__comment-actions");
-  const reportButton = createElement("button", "cf-interactions__report", "通報");
+  const reportButton = createElement("button", "cf-interactions__report");
+  const reportIcon = createElement("span", "cf-interactions__report-icon", "!");
+  const reportLabel = createElement("span", "cf-interactions__report-label", "REPORT");
+  const reportText = createElement("span", "cf-interactions__report-text", "通報");
   reportButton.type = "button";
   reportButton.title = "このコメントを通報します";
+  reportButton.setAttribute("aria-label", "このコメントを通報します");
+  reportButton.appendChild(reportIcon);
+  reportButton.appendChild(reportLabel);
+  reportButton.appendChild(reportText);
   reportButton.addEventListener("click", async function () {
     const reason = await openReportDialog({
       body: "問題の内容が分かるように、通報理由をご入力ください。送信した内容は owner ページの一覧で確認されます。",
       eyebrow: "通報",
+      chromeLabel: "REPORT LINK",
+      chromeState: "READY",
       confirmText: "通報する",
       errorText: "通報理由をご入力ください。",
       hint: "短くても大丈夫です。内容が分かる文章でご入力ください。",
+      infoItems: [
+        "このコメントと理由が owner 側の通報一覧に送信されます。",
+        "内容が確認されるまで、あなたの画面ではこのコメントはそのまま表示されます。",
+        "スパム・暴言・荒らしなど、問題点が分かる書き方で送ってください。"
+      ],
+      infoTitle: "送信内容の扱い",
       label: "通報理由",
       placeholder: "例: 不快な表現が含まれています",
       title: "コメントを通報"
