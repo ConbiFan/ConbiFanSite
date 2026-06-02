@@ -135,45 +135,57 @@ function postSelectQuery() {
   return "id, slug, title, summary, body, image_url, is_published, created_at, updated_at, published_at";
 }
 
-function scrollToCurrentHash() {
-  if (!location.hash) {
-    return;
-  }
-
-  const id = decodeURIComponent(location.hash.slice(1));
-  const target = document.getElementById(id);
-  if (!target) {
-    return;
-  }
-
-  target.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-
-  target.classList.add("is-target");
-  window.setTimeout(function () {
-    target.classList.remove("is-target");
-  }, 1600);
+function blogPostUrl(slug) {
+  return "blog-post.html?slug=" + encodeURIComponent(slug);
 }
 
-function buildBlogPostArticle(post) {
+function buildBlogListCard(post) {
   const article = createElement("article", "blog-post");
   const head = createElement("div", "blog-post__head");
-  const title = createElement("h2", "blog-post__title", post.title);
+  const title = createElement("h2", "blog-post__title");
+  const titleLink = createElement("a", "", post.title);
   const meta = createElement(
     "p",
     "blog-post__meta",
     "公開: " + formatDate(post.published_at || post.created_at)
   );
-  const link = createElement("a", "blog-post__permalink", "#" + post.slug);
+  const image = post.image_url ? document.createElement("img") : null;
+  const readLink = createElement("a", "blog-post__permalink", "続きを読む");
+
+  titleLink.href = blogPostUrl(post.slug);
+  readLink.href = blogPostUrl(post.slug);
+  title.appendChild(titleLink);
+  head.appendChild(title);
+  head.appendChild(readLink);
+  article.appendChild(head);
+  article.appendChild(meta);
+
+  if (image) {
+    image.className = "blog-post__image";
+    image.src = post.image_url;
+    image.alt = post.title;
+    image.loading = "lazy";
+    article.appendChild(image);
+  }
+
+  article.appendChild(
+    createElement("p", "blog-post__summary", post.summary || "概要はまだありません。")
+  );
+  return article;
+}
+
+function buildBlogPostArticle(post) {
+  const article = createElement("article", "blog-post blog-post--detail");
+  const title = createElement("h1", "blog-post__title", post.title);
+  const meta = createElement(
+    "p",
+    "blog-post__meta",
+    "公開: " + formatDate(post.published_at || post.created_at)
+  );
   const image = post.image_url ? document.createElement("img") : null;
   const body = createElement("div", "blog-post__body", post.body);
   const interactionHost = createElement("div", "blog-post__engagement");
 
-  article.id = post.slug;
-  link.href = "#" + post.slug;
-  link.textContent = "この投稿へのリンク";
   interactionHost.dataset.entryEngagement = "blog-post-" + post.slug;
   interactionHost.dataset.engagementIntro =
     "この記事へのコメント欄。感想や反応を気軽にどうぞ。";
@@ -185,9 +197,7 @@ function buildBlogPostArticle(post) {
   interactionHost.dataset.metaText = "ご感想を残せます";
   interactionHost.dataset.itemLabel = "ブログ記事: " + post.title;
 
-  head.appendChild(title);
-  head.appendChild(link);
-  article.appendChild(head);
+  article.appendChild(title);
   article.appendChild(meta);
 
   if (post.summary) {
@@ -211,10 +221,8 @@ function renderBlogPosts(listElement, posts) {
   listElement.innerHTML = "";
 
   posts.forEach(function (post) {
-    listElement.appendChild(buildBlogPostArticle(post));
+    listElement.appendChild(buildBlogListCard(post));
   });
-
-  scrollToCurrentHash();
 }
 
 async function initPublicBlogPage() {
@@ -223,6 +231,11 @@ async function initPublicBlogPage() {
   const config = window.CF_INTERACTIONS_CONFIG || {};
 
   if (!status || !list) {
+    return;
+  }
+
+  if (location.hash) {
+    location.replace(blogPostUrl(decodeURIComponent(location.hash.slice(1))));
     return;
   }
 
@@ -248,15 +261,19 @@ async function initPublicBlogPage() {
   }
 }
 
-function watchHashNavigation() {
-  const list = document.querySelector("[data-blog-list]");
-  if (!list) {
-    return;
+function getDetailSlug() {
+  const params = new URLSearchParams(location.search);
+  const fromQuery = params.get("slug");
+
+  if (fromQuery) {
+    return fromQuery.trim();
   }
 
-  window.addEventListener("hashchange", function () {
-    scrollToCurrentHash();
-  });
+  if (location.hash) {
+    return decodeURIComponent(location.hash.slice(1)).trim();
+  }
+
+  return "";
 }
 
 function sortPostsByNewest(posts) {
@@ -291,6 +308,66 @@ async function fetchPublishedPosts() {
   }
 
   return sortPostsByNewest(result.data || []);
+}
+
+async function fetchPublishedPostBySlug(slug) {
+  if (!configReady()) {
+    return null;
+  }
+
+  const client = await getClient();
+  const result = await client
+    .from("blog_posts")
+    .select(postSelectQuery())
+    .eq("slug", slug)
+    .eq("is_published", true)
+    .limit(1);
+
+  if (result.error) {
+    throw new Error(friendlyBlogError(result.error));
+  }
+
+  return (result.data || [])[0] || null;
+}
+
+async function initBlogDetailPage() {
+  const status = document.querySelector("[data-blog-post-status]");
+  const articleHost = document.querySelector("[data-blog-post-article]");
+  const config = window.CF_INTERACTIONS_CONFIG || {};
+
+  if (!status || !articleHost) {
+    return;
+  }
+
+  const slug = getDetailSlug();
+  if (!slug) {
+    status.textContent = "記事が指定されてないよ。";
+    return;
+  }
+
+  if (!config.supabaseUrl || !config.supabaseAnonKey) {
+    status.textContent = "ブログ設定を準備中です。";
+    return;
+  }
+
+  status.textContent = "記事を読み込んでいます...";
+
+  try {
+    const post = await fetchPublishedPostBySlug(slug);
+    if (!post) {
+      status.textContent = "記事が見つからないか、まだ公開されてないよ。";
+      articleHost.innerHTML = "";
+      return;
+    }
+
+    document.title = "Conbi Fan - " + post.title;
+    status.textContent = "記事を表示中";
+    articleHost.innerHTML = "";
+    articleHost.appendChild(buildBlogPostArticle(post));
+    window.CfInteractions.mountAll();
+  } catch (error) {
+    status.textContent = friendlyBlogError(error);
+  }
 }
 
 async function fetchOwnerPosts() {
@@ -362,13 +439,15 @@ function toBlogSlug(value) {
 
 document.addEventListener("DOMContentLoaded", function () {
   initPublicBlogPage();
-  watchHashNavigation();
+  initBlogDetailPage();
 });
 
 export {
   deleteBlogPost,
+  fetchPublishedPostBySlug,
   fetchOwnerPosts,
   fetchPublishedPosts,
+  blogPostUrl,
   saveBlogPost,
   toBlogSlug
 };

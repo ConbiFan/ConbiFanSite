@@ -9,6 +9,7 @@ import {
   signOutCurrentUser
 } from "./site-interactions.js";
 import {
+  blogPostUrl,
   deleteBlogPost,
   fetchOwnerPosts,
   saveBlogPost,
@@ -382,7 +383,7 @@ function buildBlogEntry(post) {
   head.appendChild(badges);
 
   if (post.is_published) {
-    openLink.href = "blog.html#" + post.slug;
+    openLink.href = blogPostUrl(post.slug);
   } else {
     openLink.classList.add("is-disabled");
   }
