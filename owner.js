@@ -466,8 +466,14 @@ async function refresh() {
   }
 
   const client = await getClient();
-  const result = await client.auth.getUser();
-  const user = result.data.user;
+  const sessionResult = await client.auth.getSession();
+  const session = sessionResult.data ? sessionResult.data.session : null;
+  let user = session ? session.user : null;
+
+  if (user) {
+    const userResult = await client.auth.getUser();
+    user = userResult.data ? userResult.data.user : null;
+  }
 
   if (isOwnerUser(user)) {
     renderStatus("オーナーとしてログインしています。このブラウザからコメント削除、通報確認、ブログ投稿をご利用いただけます。");

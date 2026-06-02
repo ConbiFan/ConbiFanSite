@@ -39,6 +39,10 @@ function friendlyBlogError(error) {
     return "その slug はもう使われてる。別の slug に変えてね。";
   }
 
+  if (/abort|timeout|timed out/i.test(message)) {
+    return "Supabase への通信がタイムアウトした。ネットワークか Supabase の状態を見てね。";
+  }
+
   return message;
 }
 

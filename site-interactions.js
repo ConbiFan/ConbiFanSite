@@ -8,6 +8,7 @@ const VISITOR_UID_COOKIE = "cf-uid";
 const SESSION_COOKIE_BASE = "cf-supabase-auth";
 const COOKIE_CHUNK_SIZE = 3500;
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
+const SUPABASE_REQUEST_TIMEOUT_MS = 15000;
 const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
   dateStyle: "short",
   timeStyle: "short"
@@ -160,6 +161,34 @@ function getOrCreateVisitorUid() {
   const uid = generateVisitorUid();
   writeCookie(VISITOR_UID_COOKIE, uid, COOKIE_MAX_AGE);
   return uid;
+}
+
+async function fetchWithTimeout(input, init) {
+  const controller = new AbortController();
+  const originalSignal = init && init.signal;
+  const timeoutId = window.setTimeout(function () {
+    controller.abort();
+  }, SUPABASE_REQUEST_TIMEOUT_MS);
+
+  if (originalSignal) {
+    if (originalSignal.aborted) {
+      controller.abort();
+    } else {
+      originalSignal.addEventListener(
+        "abort",
+        function () {
+          controller.abort();
+        },
+        { once: true }
+      );
+    }
+  }
+
+  try {
+    return await fetch(input, Object.assign({}, init || {}, { signal: controller.signal }));
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 function listChunkCookies(baseName) {
@@ -681,7 +710,7 @@ function isOwnerUser(user) {
   );
 }
 
-async function keepOnlyOwnerSession(user) {
+function keepOnlyOwnerSession(user) {
   if (!user || isOwnerUser(user)) {
     clientState.user = user || null;
     clientState.owner = isOwnerUser(user);
@@ -692,11 +721,9 @@ async function keepOnlyOwnerSession(user) {
   clientState.owner = false;
 
   if (clientState.client) {
-    try {
-      await clientState.client.auth.signOut();
-    } catch (_) {
+    clientState.client.auth.signOut({ scope: "local" }).catch(function () {
       // A stale non-owner session should not block public comments.
-    }
+    });
   }
 }
 
@@ -718,20 +745,21 @@ async function getClient() {
         storage: storage
       },
       global: {
+        fetch: fetchWithTimeout,
         headers: {
           "x-client-info": visitorUid
         }
       }
     });
 
-    clientPromise = clientState.client.auth.getUser().then(async function (result) {
-      const user = result.data ? result.data.user : null;
-      await keepOnlyOwnerSession(user);
+    clientPromise = clientState.client.auth.getSession().then(function (result) {
+      const session = result.data ? result.data.session : null;
+      keepOnlyOwnerSession(session ? session.user : null);
       return clientState.client;
     });
 
-    clientState.client.auth.onAuthStateChange(async function (_, session) {
-      await keepOnlyOwnerSession(session ? session.user : null);
+    clientState.client.auth.onAuthStateChange(function (_, session) {
+      keepOnlyOwnerSession(session ? session.user : null);
       refreshAllWidgets();
     });
   }
@@ -1140,7 +1168,11 @@ function friendlyError(error) {
   const message = String(error.message || error);
 
   if (/anonymous/i.test(message)) {
-    return "Supabase 側で Anonymous sign-ins が無効になっている可能性があります。設定後に再読み込みしてください。";
+    return "古い匿名ログイン設定が残っている可能性があります。ページを再読み込みしてください。";
+  }
+
+  if (/abort|timeout|timed out/i.test(message)) {
+    return "Supabase への通信がタイムアウトしました。ネットワークまたは Supabase の状態をご確認ください。";
   }
 
   if (/Invalid API key/i.test(message) || /401/.test(message)) {
