@@ -2,7 +2,9 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const MAX_COMMENT_LENGTH = 280;
 const MAX_REPORT_REASON_LENGTH = 180;
+const MAX_DISPLAY_NAME_LENGTH = 24;
 const DISPLAY_NAME_COOKIE = "cf-display-name";
+const VISITOR_UID_COOKIE = "cf-uid";
 const SESSION_COOKIE_BASE = "cf-supabase-auth";
 const COOKIE_CHUNK_SIZE = 3500;
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
@@ -99,6 +101,67 @@ function removeCookie(name) {
     secure;
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return UUID_PATTERN.test(String(value || ""));
+}
+
+function generateVisitorUid() {
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  try {
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+      const hex = Array.from(bytes, function (byte) {
+        return byte.toString(16).padStart(2, "0");
+      });
+
+      return (
+        hex.slice(0, 4).join("") +
+        "-" +
+        hex.slice(4, 6).join("") +
+        "-" +
+        hex.slice(6, 8).join("") +
+        "-" +
+        hex.slice(8, 10).join("") +
+        "-" +
+        hex.slice(10, 16).join("")
+      );
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (char) {
+    const randomNibble = (Math.random() * 16) | 0;
+    const value = char === "x" ? randomNibble : (randomNibble & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+function getOrCreateVisitorUid() {
+  const existing = readCookie(VISITOR_UID_COOKIE);
+  if (existing && isUuid(existing)) {
+    return existing;
+  }
+
+  const uid = generateVisitorUid();
+  writeCookie(VISITOR_UID_COOKIE, uid, COOKIE_MAX_AGE);
+  return uid;
+}
+
 function listChunkCookies(baseName) {
   return document.cookie
     .split("; ")
@@ -183,6 +246,23 @@ function saveDisplayName(name) {
   writeCookie(DISPLAY_NAME_COOKIE, name, COOKIE_MAX_AGE);
 }
 
+function clipCharacters(value, maxCharacters) {
+  const safeMax = Math.max(0, Number(maxCharacters) || 0);
+  return Array.from(String(value || "")).slice(0, safeMax).join("");
+}
+
+function normalizeDisplayName(value) {
+  const cleaned = String(value || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .trim();
+
+  return clipCharacters(cleaned, MAX_DISPLAY_NAME_LENGTH);
+}
+
+function defaultDisplayName() {
+  return "名無し";
+}
+
 function pagePath() {
   const path = location.pathname || "/index.html";
   return path === "/" ? "/index.html" : path;
@@ -209,6 +289,28 @@ function createElement(tag, className, text) {
     element.textContent = text;
   }
   return element;
+}
+
+function dataTransferHasImage(dataTransfer) {
+  if (!dataTransfer || !dataTransfer.items) {
+    return false;
+  }
+
+  return Array.from(dataTransfer.items).some(function (item) {
+    return item && /^image\//i.test(item.type || "");
+  });
+}
+
+function formatFixedUid(userId) {
+  const normalized = String(userId || "")
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
+
+  if (!normalized) {
+    return "UID-READYING";
+  }
+
+  return "UID-" + normalized.slice(0, 16);
 }
 
 function setDialogInfo(dialog, title, items) {
@@ -579,6 +681,25 @@ function isOwnerUser(user) {
   );
 }
 
+async function keepOnlyOwnerSession(user) {
+  if (!user || isOwnerUser(user)) {
+    clientState.user = user || null;
+    clientState.owner = isOwnerUser(user);
+    return;
+  }
+
+  clientState.user = null;
+  clientState.owner = false;
+
+  if (clientState.client) {
+    try {
+      await clientState.client.auth.signOut();
+    } catch (_) {
+      // A stale non-owner session should not block public comments.
+    }
+  }
+}
+
 async function getClient() {
   if (!hasSupabaseConfig()) {
     return null;
@@ -586,6 +707,7 @@ async function getClient() {
 
   if (!clientPromise) {
     const storage = createSessionStorageAdapter();
+    const visitorUid = getOrCreateVisitorUid();
 
     clientState.client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
       auth: {
@@ -594,20 +716,23 @@ async function getClient() {
         flowType: "pkce",
         persistSession: true,
         storage: storage
+      },
+      global: {
+        headers: {
+          "x-client-info": visitorUid
+        }
       }
     });
 
-    clientPromise = clientState.client.auth.getUser().then(function (result) {
-      clientState.user = result.data.user || null;
-      clientState.owner = isOwnerUser(clientState.user);
+    clientPromise = clientState.client.auth.getUser().then(async function (result) {
+      const user = result.data ? result.data.user : null;
+      await keepOnlyOwnerSession(user);
       return clientState.client;
     });
 
-    clientState.client.auth.onAuthStateChange(function (_, session) {
-      clientState.user = session ? session.user : null;
-      clientState.owner = isOwnerUser(clientState.user);
+    clientState.client.auth.onAuthStateChange(async function (_, session) {
+      await keepOnlyOwnerSession(session ? session.user : null);
       refreshAllWidgets();
-      notifyOwnerConsole();
     });
   }
 
@@ -621,18 +746,32 @@ async function ensureVisitorSession() {
     return null;
   }
 
-  if (clientState.user) {
-    return clientState.user;
+  return {
+    id: getOrCreateVisitorUid()
+  };
+}
+
+function getVisitorUid() {
+  return getOrCreateVisitorUid();
+}
+
+async function getOwnerAuthUser() {
+  const client = await getClient();
+  if (!client) {
+    throw new Error("Supabase の設定がまだ入ってない。");
   }
 
-  const result = await client.auth.signInAnonymously();
+  const result = await client.auth.getUser();
   if (result.error) {
     throw result.error;
   }
 
-  clientState.user = result.data.user || null;
-  clientState.owner = isOwnerUser(clientState.user);
-  return clientState.user;
+  const user = result.data.user;
+  if (!isOwnerUser(user)) {
+    throw new Error("owner としてログインしてから操作してね。");
+  }
+
+  return user;
 }
 
 async function signInOwnerWithPassword(password) {
@@ -702,7 +841,9 @@ async function fetchThreadState(thread) {
 
   const commentsPromise = client
     .from("engagement_comments")
-    .select("id, thread_id, page_path, item_label, display_name, body, created_at")
+    .select(
+      "id, thread_id, page_path, item_label, display_name, is_owner, body, created_at"
+    )
     .eq("thread_id", thread)
     .order("created_at", { ascending: false });
 
@@ -763,17 +904,32 @@ async function toggleLike(thread, liked) {
   }
 }
 
-async function addComment(context, name, text) {
+async function addComment(context, text, displayName) {
   const client = await getClient();
   const user = await ensureVisitorSession();
   const result = await client.from("engagement_comments").insert({
     body: text,
-    display_name: name,
+    display_name: displayName,
     item_label: context.itemLabel,
     page_path: pagePath(),
     thread_id: context.thread,
     user_id: user.id
   });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return;
+}
+
+async function syncDisplayName(displayName) {
+  const client = await getClient();
+  const user = await ensureVisitorSession();
+  const result = await client
+    .from("engagement_comments")
+    .update({ display_name: displayName })
+    .eq("user_id", user.id);
 
   if (result.error) {
     throw result.error;
@@ -826,7 +982,7 @@ async function fetchReports() {
 
 async function resolveReport(reportId) {
   const client = await getClient();
-  const user = await ensureVisitorSession();
+  const user = await getOwnerAuthUser();
   const result = await client
     .from("engagement_reports")
     .update({
@@ -867,6 +1023,7 @@ function createSetupNotice() {
 function buildCommentCard(context, comment) {
   const card = createElement("article", "cf-interactions__comment");
   const head = createElement("div", "cf-interactions__comment-head");
+  const authorWrap = createElement("div", "cf-interactions__author-wrap");
   const author = createElement("span", "cf-interactions__author", comment.display_name);
   const time = createElement("span", "cf-interactions__time", formatDate(comment.created_at));
   const body = createElement("p", "cf-interactions__body", comment.body);
@@ -920,7 +1077,18 @@ function buildCommentCard(context, comment) {
     }
   });
 
-  head.appendChild(author);
+  authorWrap.appendChild(author);
+  if (comment && comment.is_owner) {
+    const badge = createElement(
+      "span",
+      "cf-interactions__badge cf-interactions__badge--owner",
+      "管理者"
+    );
+    badge.title = "管理者コメント";
+    authorWrap.appendChild(badge);
+  }
+
+  head.appendChild(authorWrap);
   head.appendChild(time);
   actions.appendChild(reportButton);
 
@@ -1004,13 +1172,14 @@ function createWidgetContext(target, options) {
     mode: mode,
     noteText:
       options.note ||
-      "コメントといいねは共有保存されます。通報は owner 側の一覧へ送信されます。",
+      "ログインなしでコメントできます。コメントといいねは共有保存されます。コメント欄では画像は送れません。通報は owner 側の一覧へ送信されます。",
     panelOpen: Boolean(options.expanded),
     setupNotice: null,
     statusMessage: "",
     statusTone: "",
     target: target,
-    thread: threadKey(options.id)
+    thread: threadKey(options.id),
+    viewerName: normalizeDisplayName(readDisplayName()) || defaultDisplayName()
   };
 
   const root = createElement("section", "cf-interactions cf-interactions--" + mode);
@@ -1037,9 +1206,10 @@ function createWidgetContext(target, options) {
   const nameLabel = createElement("span", "cf-interactions__label", "名前");
   const nameInput = createElement("input", "cf-interactions__input");
   nameInput.type = "text";
-  nameInput.maxLength = 24;
-  nameInput.placeholder = "名無しのクラフター";
-  nameInput.value = readDisplayName();
+  nameInput.maxLength = MAX_DISPLAY_NAME_LENGTH;
+  nameInput.autocomplete = "nickname";
+  nameInput.placeholder = defaultDisplayName();
+  nameInput.value = context.viewerName;
   const textField = createElement("label", "cf-interactions__field");
   const textLabel = createElement(
     "span",
@@ -1113,6 +1283,7 @@ function createWidgetContext(target, options) {
     context.elements.likeButton.disabled = context.loading;
     context.elements.commentButton.disabled = context.loading;
     context.elements.submit.disabled = context.loading;
+    context.elements.nameInput.disabled = context.loading;
     context.elements.likeButton.setAttribute("aria-pressed", context.liked ? "true" : "false");
     context.elements.commentButton.setAttribute(
       "aria-expanded",
@@ -1161,7 +1332,7 @@ function createWidgetContext(target, options) {
       context.liked = state.liked;
       context.metaText = clientState.owner
         ? "owner として閲覧中です。削除ボタンが使えます。"
-        : "共有コメントを表示しています";
+        : "ログインなしでコメントできます";
       context.statusTone = "";
     } catch (error) {
       context.metaText = "読み込みに失敗しました";
@@ -1195,29 +1366,91 @@ function createWidgetContext(target, options) {
     context.render();
   });
 
-  nameInput.addEventListener("change", function () {
-    saveDisplayName(nameInput.value.trim() || "名無しのクラフター");
+  nameInput.addEventListener("change", async function () {
+    const displayName =
+      normalizeDisplayName(nameInput.value) || context.viewerName || defaultDisplayName();
+
+    context.viewerName = displayName;
+    nameInput.value = displayName;
+    saveDisplayName(displayName);
+
+    context.loading = true;
+    context.statusMessage = "";
+    context.statusTone = "";
+    context.metaText = "名前を更新しています";
+    context.render();
+
+    try {
+      await syncDisplayName(displayName);
+      await context.reload();
+      context.statusMessage = "名前を更新しました。";
+      context.statusTone = "ok";
+    } catch (error) {
+      context.loading = false;
+      context.statusMessage = friendlyError(error);
+      context.statusTone = "error";
+    } finally {
+      context.loading = false;
+      context.render();
+    }
+  });
+
+  function rejectCommentImages(message) {
+    context.statusMessage = message;
+    context.statusTone = "error";
+    context.metaText = "コメント欄ではテキストのみ送れます";
+    context.render();
+  }
+
+  textArea.addEventListener("paste", function (event) {
+    if (!dataTransferHasImage(event.clipboardData)) {
+      return;
+    }
+
+    event.preventDefault();
+    rejectCommentImages("コメント欄には画像を貼り付けできません。");
+  });
+
+  textArea.addEventListener("drop", function (event) {
+    if (!dataTransferHasImage(event.dataTransfer)) {
+      return;
+    }
+
+    event.preventDefault();
+    rejectCommentImages("コメント欄には画像をドロップできません。");
+  });
+
+  textArea.addEventListener("dragover", function (event) {
+    if (!dataTransferHasImage(event.dataTransfer)) {
+      return;
+    }
+
+    event.preventDefault();
   });
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
-    const name = nameInput.value.trim() || "名無しのクラフター";
     const text = textArea.value.trim();
+    const displayName =
+      normalizeDisplayName(nameInput.value) || context.viewerName || defaultDisplayName();
 
     if (!text) {
       textArea.focus();
       return;
     }
 
-    saveDisplayName(name);
-    nameInput.value = name;
+    context.viewerName = displayName;
+    nameInput.value = displayName;
+    saveDisplayName(displayName);
+
     context.loading = true;
     context.statusMessage = "";
     context.metaText = "コメントを送信しています";
     context.render();
 
     try {
-      await addComment(context, name, text);
+      await syncDisplayName(displayName);
+      await addComment(context, text, displayName);
       textArea.value = "";
       context.panelOpen = true;
       await context.reload();
@@ -1314,114 +1547,8 @@ function mountAll() {
   }
 }
 
-function getOwnerConsoleElements() {
-  return {
-    email: document.querySelector("[data-owner-email]"),
-    login: document.querySelector("[data-owner-login]"),
-    logout: document.querySelector("[data-owner-logout]"),
-    status: document.querySelector("[data-owner-status]")
-  };
-}
-
-function renderOwnerConsole() {
-  const elements = getOwnerConsoleElements();
-  if (!elements.status) {
-    return;
-  }
-
-  if (!hasSupabaseConfig()) {
-    elements.status.textContent =
-      "site-interactions-config.js の Supabase 設定がまだ空です。";
-    if (elements.login) {
-      elements.login.disabled = true;
-    }
-    if (elements.logout) {
-      elements.logout.disabled = true;
-    }
-    return;
-  }
-
-  if (elements.email) {
-    elements.email.textContent = config.ownerEmail || "(ownerEmail 未設定)";
-  }
-
-  if (!config.ownerEmail) {
-    elements.status.textContent =
-      "ownerEmail が未設定です。削除権限はまだ有効化されていません。";
-    if (elements.login) {
-      elements.login.hidden = false;
-      elements.login.disabled = true;
-    }
-    if (elements.logout) {
-      elements.logout.hidden = true;
-    }
-    return;
-  }
-
-  if (clientState.owner) {
-    elements.status.textContent =
-      "オーナーとしてログインしています。このブラウザから削除ボタンをご利用いただけます。";
-    if (elements.login) {
-      elements.login.hidden = true;
-    }
-    if (elements.logout) {
-      elements.logout.hidden = false;
-      elements.logout.disabled = false;
-    }
-    return;
-  }
-
-  elements.status.textContent =
-    "まだオーナーログインしていません。owner ページからパスワードでログインしてください。";
-  if (elements.login) {
-    elements.login.hidden = false;
-    elements.login.disabled = false;
-  }
-  if (elements.logout) {
-    elements.logout.hidden = true;
-  }
-}
-
-function notifyOwnerConsole() {
-  renderOwnerConsole();
-}
-
-async function setupOwnerConsole() {
-  const elements = getOwnerConsoleElements();
-  if (!elements.status) {
-    return;
-  }
-
-  renderOwnerConsole();
-
-  if (elements.logout) {
-    elements.logout.addEventListener("click", async function () {
-      elements.logout.disabled = true;
-      elements.status.textContent = "ログアウトしています...";
-
-      try {
-        await signOutCurrentUser();
-        elements.status.textContent = "ログアウトしました。";
-      } catch (error) {
-        elements.status.textContent = friendlyError(error);
-      } finally {
-        elements.logout.disabled = false;
-      }
-    });
-  }
-
-  try {
-    await getClient();
-  } catch (error) {
-    elements.status.textContent = friendlyError(error);
-  }
-
-  renderOwnerConsole();
-}
-
 document.addEventListener("DOMContentLoaded", function () {
   mountAll();
-  setupOwnerConsole();
 });
 
 window.CfInteractions = {
@@ -1447,6 +1574,7 @@ export {
   deleteComment,
   fetchReports,
   getClient,
+  getVisitorUid,
   isOwnerUser,
   openConfirmDialog,
   resolveReport,

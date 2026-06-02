@@ -214,6 +214,33 @@
   color: #f8fafc;
 }
 
+.cf-interactions__author-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cf-interactions__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(15, 23, 42, 0.6);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.cf-interactions__badge--owner {
+  border-color: rgba(251, 191, 36, 0.44);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(15, 23, 42, 0.64));
+  color: #fde68a;
+}
+
 .cf-interactions__time {
   font-size: 0.82rem;
   color: #94a3b8;

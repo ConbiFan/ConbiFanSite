@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <title>Conbi Fan - コメントルール</title>
+  <style>
+    :root {
+      --bg: #09111f;
+      --panel: rgba(15, 23, 42, 0.84);
+      --border: rgba(148, 163, 184, 0.18);
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.18);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(34, 197, 94, 0.18), transparent 26%),
+        linear-gradient(180deg, #0a1326, var(--bg));
+    }
+
+    a {
+      color: #bbf7d0;
+      text-decoration: none;
+    }
+
+    .hero {
+      padding: 58px 24px 34px;
+      background:
+        linear-gradient(135deg, rgba(22, 163, 74, 0.84), rgba(59, 130, 246, 0.72)),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.3), rgba(15, 23, 42, 0.12));
+    }
+
+    .hero__inner,
+    main {
+      width: min(920px, 100%);
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: rgba(240, 253, 244, 0.86);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 6vw, 4rem);
+      line-height: 1;
+    }
+
+    .hero__body {
+      width: min(700px, 100%);
+      margin: 16px 0 0;
+      color: rgba(240, 253, 244, 0.9);
+      line-height: 1.8;
+    }
+
+    .hero__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(2, 6, 23, 0.3);
+      color: #f8fafc;
+      font-weight: 700;
+      backdrop-filter: blur(10px);
+    }
+
+    main {
+      padding: 28px 24px 64px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .notice,
+    .rule-card {
+      padding: 20px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background:
+        linear-gradient(135deg, var(--accent-soft), transparent 45%),
+        var(--panel);
+      box-shadow: 0 24px 60px rgba(2, 6, 23, 0.22);
+    }
+
+    .notice {
+      color: #dcfce7;
+      line-height: 1.8;
+    }
+
+    .rule-card h2 {
+      margin: 0 0 12px;
+      font-size: 1.35rem;
+    }
+
+    .rule-card p,
+    .rule-card li {
+      color: var(--text);
+      line-height: 1.8;
+    }
+
+    .rule-card ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .scope-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .scope-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid var(--border);
+      color: #dcfce7;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    footer {
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(2, 6, 23, 0.44);
+    }
+
+    .footer-links {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px 18px;
+      font-size: 0.92rem;
+    }
+
+    .footer-links a {
+      color: #bbf7d0;
+    }
+
+    @media (max-width: 640px) {
+      .hero {
+        padding: 48px 18px 30px;
+      }
+
+      main {
+        padding: 24px 18px 56px;
+      }
+
+      .notice,
+      .rule-card {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__inner">
+      <p class="eyebrow">Conbi Fan Comment Rules</p>
+      <h1>コメントルール</h1>
+      <p class="hero__body">このページに記載しているルールは、Conbi Fan のホームページ内にあるコメント欄すべてに共通で適用されます。ホーム、ブログ、Lab、ダウンロード、シード値ページなど、コメントできる場所はすべて同じルールで確認します。</p>
+      <div class="hero__actions">
+        <a class="button" href="index.html">ホームへ戻る</a>
+        <a class="button" href="blog.html">ブログを見る</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="notice">
+      コメントは自由にお書きいただいて大丈夫です。未ログインの状態でも、匿名 UID が自動で割り当てられた形でコメントできます。ただし、ほかの方が見ても問題のない内容でのご利用をお願いします。必要に応じて owner 側で確認し、削除や通報対応を行う場合があります。なお、画像を掲載できるのはブログ記事のみで、コメント欄には画像を貼り付けできません。
+      <div class="scope-list">
+        <span class="scope-chip">ホーム掲示板</span>
+        <span class="scope-chip">ブログコメント</span>
+        <span class="scope-chip">Lab コメント</span>
+        <span class="scope-chip">ダウンロード作品コメント</span>
+        <span class="scope-chip">シード値コメント</span>
+      </div>
+    </section>
+
+    <section class="rule-card">
+      <h2>OK な使い方</h2>
+      <ul>
+        <li>作品の感想、応援、気になった点を書くこと</li>
+        <li>改善案や追加してほしい内容を送ること</li>
+        <li>マイクラや作品の話題で会話すること</li>
+      </ul>
+    </section>
+
+    <section class="rule-card">
+      <h2>NG な内容</h2>
+      <ul>
+        <li>暴言、誹謗中傷、しつこい煽り</li>
+        <li>スパム、宣伝、同じ内容の連投</li>
+        <li>個人情報、外部サービスのパスワード、危険なリンク</li>
+        <li>公序良俗に反する内容や、見た方が困る画像・表現への誘導</li>
+        <li>作者や他の利用者になりすます行為</li>
+      </ul>
+    </section>
+
+    <section class="rule-card">
+      <h2>対応について</h2>
+      <p>通報が届いたコメント、ルール違反の可能性があるコメント、荒れそうなコメントは owner 側で削除する場合があります。必要に応じて、今後のご利用を制限することもあります。</p>
+    </section>
+
+    <section class="rule-card">
+      <h2>ひとこと</h2>
+      <p>安心して楽しく使っていただけるのがいちばんうれしいです。自由にコメントしていただいて大丈夫ですが、サイト全体で同じルールが適用される点だけご確認ください。</p>
+    </section>
+  </main>
+
+  <footer>
+    © 2026 Conbi Fan
+    <div class="footer-links">
+      <a href="index.html">ホーム</a>
+      <a href="rules.html">コメントルール</a>
+    </div>
+  </footer>
+</body>
+</html>

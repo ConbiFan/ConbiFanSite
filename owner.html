@@ -35,7 +35,7 @@
     }
 
     main {
-      width: min(560px, 100%);
+      width: min(980px, 100%);
       padding: 28px;
       border-radius: 24px;
       border: 1px solid var(--border);
@@ -118,6 +118,150 @@
       margin-top: 28px;
       padding-top: 24px;
       border-top: 1px solid var(--border);
+    }
+
+    .console-section {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .section-head h2,
+    .panel-card h3,
+    .reports h2 {
+      margin: 0 0 8px;
+    }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 16px;
+    }
+
+    .panel-card {
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .textarea--body {
+      min-height: 280px;
+    }
+
+    .blog-status {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    .blog-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .checkbox input {
+      inline-size: 18px;
+      block-size: 18px;
+      accent-color: var(--accent);
+    }
+
+    .blog-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .blog-entry {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(30, 41, 59, 0.82);
+    }
+
+    .blog-entry-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .blog-entry-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 1.05rem;
+    }
+
+    .blog-entry-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.16);
+      color: #bbf7d0;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .badge.is-draft {
+      background: rgba(250, 204, 21, 0.16);
+      color: #fde68a;
+    }
+
+    .blog-entry-meta,
+    .blog-entry-slug {
+      margin: 0 0 8px;
+      color: var(--muted);
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .blog-entry-summary {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .blog-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .is-disabled {
+      opacity: 0.5;
+      pointer-events: none;
     }
 
     .reports h2 {
@@ -215,12 +359,18 @@
       background: rgba(239, 68, 68, 0.16);
       color: #fecaca;
     }
+
+    @media (max-width: 820px) {
+      .panel-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>Owner Console</h1>
-    <p>こちらで owner としてログインしておくと、サイト上のコメント削除と通報確認をご利用いただけます。</p>
+    <p>こちらで owner としてログインしておくと、サイト上のコメント削除、通報確認、ブログ投稿をご利用いただけます。</p>
 
     <div class="row">
       <span class="label">ログイン状態</span>
@@ -228,6 +378,11 @@
 
     <div class="status" data-owner-page-status>
       読み込んでいます...
+    </div>
+
+    <div class="row" data-owner-visitor-uid-row hidden>
+      <span class="label">固定コメントUID</span>
+      <span class="value" data-owner-visitor-uid></span>
     </div>
 
     <form class="login-form" data-owner-login-form>
@@ -256,7 +411,64 @@
       </div>
     </form>
 
-    <section class="reports">
+    <section class="console-section" data-owner-blog-section hidden>
+      <div class="section-head">
+        <div>
+          <h2>ブログ管理</h2>
+          <p class="helper">ブログ本文はここから作れる。公開チェックを外すと、公開ページには出さずに下書き保存できる。</p>
+        </div>
+        <a class="secondary" href="blog.html">公開ブログを見る</a>
+      </div>
+      <p class="blog-status" data-owner-blog-status>owner としてログインすると使える。</p>
+
+      <div class="panel-grid">
+        <form class="panel-card blog-form" data-owner-blog-form>
+          <label class="field">
+            <span class="label">タイトル</span>
+            <input class="input" type="text" maxlength="120" data-owner-blog-title />
+          </label>
+
+          <label class="field">
+            <span class="label">slug</span>
+            <input class="input" type="text" maxlength="80" data-owner-blog-slug />
+          </label>
+
+          <label class="field">
+            <span class="label">概要</span>
+            <textarea class="input textarea" maxlength="220" data-owner-blog-summary></textarea>
+          </label>
+
+          <label class="field">
+            <span class="label">画像URL</span>
+            <input class="input" type="url" inputmode="url" maxlength="2000" placeholder="https://example.com/image.png" data-owner-blog-image-url />
+          </label>
+
+          <label class="field">
+            <span class="label">本文</span>
+            <textarea class="input textarea textarea--body" data-owner-blog-body></textarea>
+          </label>
+
+          <label class="checkbox">
+            <input type="checkbox" data-owner-blog-published checked />
+            <span>公開する</span>
+          </label>
+
+          <p class="helper">slug を空にするとタイトルから自動生成する。画像を出したいときだけ画像URLを貼ってね。コメント欄には画像を送れない。</p>
+
+          <div class="actions">
+            <button type="submit" data-owner-blog-save>記事を保存</button>
+            <button type="button" class="secondary" data-owner-blog-cancel hidden>編集をやめる</button>
+          </div>
+        </form>
+
+        <div class="panel-card">
+          <h3>記事一覧</h3>
+          <div class="blog-list" data-owner-blog-list></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="reports console-section" data-owner-reports-section hidden>
       <h2>通報一覧</h2>
       <p class="reports-status" data-owner-reports-status>ログインすると表示されます。</p>
       <div class="reports-list" data-owner-reports-list></div>
