@@ -5,11 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="apple-touch-icon" href="favicon.png">
-  
-  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e3369e43137a4c9cb7004ab49c613ca4"}'></script><!-- End Cloudflare Web Analytics -->
   <title>Conbi Fan - Blog</title>
   <link rel="stylesheet" href="site-interactions.css">
-  <style>
   <style>
     :root {
       --bg: #09111f;
@@ -20,11 +17,7 @@
       --text: #e2e8f0;
       --muted: #94a3b8;
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -33,24 +26,14 @@
         radial-gradient(circle at top, rgba(56, 189, 248, 0.2), transparent 28%),
         linear-gradient(180deg, #0a1326, var(--bg));
     }
-
-    a {
-      color: #bae6fd;
-      text-decoration: none;
-    }
-
+    a { color: #bae6fd; text-decoration: none; }
     .hero {
       padding: 64px 24px 40px;
       background:
         linear-gradient(135deg, rgba(37, 99, 235, 0.88), rgba(14, 165, 233, 0.72)),
         linear-gradient(180deg, rgba(15, 23, 42, 0.3), rgba(15, 23, 42, 0.12));
     }
-
-    .hero__inner {
-      width: min(920px, 100%);
-      margin: 0 auto;
-    }
-
+    .hero__inner { width: min(920px, 100%); margin: 0 auto; }
     .eyebrow {
       margin: 0 0 12px;
       color: rgba(239, 246, 255, 0.82);
@@ -59,27 +42,14 @@
       letter-spacing: 0.16em;
       text-transform: uppercase;
     }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(2.4rem, 6vw, 4.5rem);
-      line-height: 1;
-    }
-
+    h1 { margin: 0; font-size: clamp(2.4rem, 6vw, 4.5rem); line-height: 1; }
     .hero__body {
       width: min(620px, 100%);
       margin: 16px 0 0;
       color: rgba(239, 246, 255, 0.86);
       line-height: 1.8;
     }
-
-    .hero__actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 24px;
-    }
-
+    .hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
     .button {
       display: inline-flex;
       align-items: center;
@@ -92,13 +62,7 @@
       font-weight: 700;
       backdrop-filter: blur(10px);
     }
-
-    main {
-      width: min(920px, 100%);
-      margin: 0 auto;
-      padding: 28px 24px 64px;
-    }
-
+    main { width: min(920px, 100%); margin: 0 auto; padding: 28px 24px 64px; }
     .status {
       margin: 0 0 18px;
       padding: 14px 16px;
@@ -107,12 +71,7 @@
       background: rgba(15, 23, 42, 0.7);
       color: var(--muted);
     }
-
-    .posts {
-      display: grid;
-      gap: 18px;
-    }
-
+    .posts { display: grid; gap: 18px; }
     .blog-post {
       padding: 22px;
       border-radius: 22px;
@@ -121,16 +80,9 @@
         linear-gradient(135deg, var(--accent-soft), transparent 45%),
         var(--panel);
       box-shadow: 0 24px 60px rgba(2, 6, 23, 0.24);
-      transition:
-        transform 0.18s ease,
-        border-color 0.18s ease;
+      transition: transform 0.18s ease, border-color 0.18s ease;
     }
-
-    .blog-post.is-target {
-      border-color: rgba(125, 211, 252, 0.62);
-      transform: translateY(-2px);
-    }
-
+    .blog-post.is-target { border-color: rgba(125, 211, 252, 0.62); transform: translateY(-2px); }
     .blog-post__head {
       display: flex;
       flex-wrap: wrap;
@@ -138,25 +90,14 @@
       justify-content: space-between;
       gap: 12px;
     }
-
     .blog-post__title {
       margin: 0;
       font-size: clamp(1.45rem, 3vw, 2rem);
       line-height: 1.2;
       color: #f8fafc;
     }
-
-    .blog-post__permalink {
-      color: #7dd3fc;
-      font-size: 0.92rem;
-    }
-
-    .blog-post__meta {
-      margin: 12px 0 0;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
+    .blog-post__permalink { color: #7dd3fc; font-size: 0.92rem; }
+    .blog-post__meta { margin: 12px 0 0; color: var(--muted); font-size: 0.92rem; }
     .blog-post__summary {
       margin: 16px 0 0;
       color: #e0f2fe;
@@ -164,7 +105,6 @@
       line-height: 1.7;
       white-space: pre-wrap;
     }
-
     .blog-post__body {
       margin-top: 16px;
       color: var(--text);
@@ -172,7 +112,6 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-
     .blog-post__image {
       display: block;
       width: 100%;
@@ -183,11 +122,7 @@
       object-fit: cover;
       box-shadow: 0 18px 42px rgba(2, 6, 23, 0.24);
     }
-
-    .blog-post__engagement {
-      margin-top: 18px;
-    }
-
+    .blog-post__engagement { margin-top: 18px; }
     .rules-note {
       margin-top: 22px;
       padding: 14px 16px;
@@ -197,14 +132,12 @@
       color: var(--muted);
       line-height: 1.7;
     }
-
     footer {
       padding: 24px;
       text-align: center;
       color: var(--muted);
       background: rgba(2, 6, 23, 0.44);
     }
-
     .footer-links {
       margin-top: 10px;
       display: flex;
@@ -213,23 +146,11 @@
       gap: 12px 18px;
       font-size: 0.92rem;
     }
-
-    .footer-links a {
-      color: #bae6fd;
-    }
-
+    .footer-links a { color: #bae6fd; }
     @media (max-width: 640px) {
-      .hero {
-        padding: 52px 18px 34px;
-      }
-
-      main {
-        padding: 24px 18px 56px;
-      }
-
-      .blog-post {
-        padding: 18px;
-      }
+      .hero { padding: 52px 18px 34px; }
+      main { padding: 24px 18px 56px; }
+      .blog-post { padding: 18px; }
     }
   </style>
 </head>
@@ -247,8 +168,12 @@
   </header>
 
   <main>
+    <!-- ステータス表示エリア（必須） -->
     <p class="status" data-blog-status>読み込んでいます...</p>
+    
+    <!-- ブログ一覧描画エリア（必須） -->
     <div class="posts" data-blog-list></div>
+    
     <p class="rules-note">このブログのコメントルールもサイト全体と共通。気になる場合は <a href="rules.html">コメントルール</a> を見てね。</p>
   </main>
 
@@ -260,6 +185,7 @@
     </div>
   </footer>
 
+  <!-- スクリプト読み込み（必須・順序固定） -->
   <script src="site-interactions-config.js"></script>
   <script type="module" src="site-interactions.js"></script>
   <script type="module" src="blog.js"></script>

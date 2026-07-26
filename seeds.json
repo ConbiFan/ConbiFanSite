@@ -1,12 +1,12 @@
 [
   {
-  "id": 6,
-  "seed": "-8229350673023213467",
-  "edition": "java",
-  "version": "1.21.11",
-  "description": "村・ネザーゲート・トライアルチャンバー・沈没船が近くに生成。地形の高低差は控えめで安定。",
-  "tags": ["village", "nether", "trial_chamber", "shipwreck", "terrain"],
-  "stable": 4
+    "id": 6,
+    "seed": "-8229350673023213467",
+    "edition": "java",
+    "version": "1.21.11",
+    "description": "村・ネザーゲート・トライアルチャンバー・沈没船が近くに生成。地形の高低差は控えめで安定。",
+    "tags": ["village", "nether", "trial_chamber", "shipwreck", "terrain"],
+    "stable": 4
   },
   {
     "id": 5,
