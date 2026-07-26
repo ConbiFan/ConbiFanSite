@@ -5,477 +5,130 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="apple-touch-icon" href="favicon.png">
-  <link rel="stylesheet" href="site-interactions.css">
   <title>Conbi Fan - Owner</title>
+  <link rel="stylesheet" href="site-interactions.css">
   <style>
-    :root {
-      --bg: #09111f;
-      --panel: rgba(15, 23, 42, 0.86);
-      --border: rgba(148, 163, 184, 0.18);
-      --accent: #22c55e;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      font-family: system-ui, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top, rgba(34, 197, 94, 0.22), transparent 28%),
-        linear-gradient(180deg, #0a1326, var(--bg));
-    }
-
-    main {
-      width: min(980px, 100%);
-      padding: 28px;
-      border-radius: 24px;
-      border: 1px solid var(--border);
-      background: var(--panel);
-      box-shadow: 0 30px 80px rgba(2, 6, 23, 0.45);
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: clamp(2rem, 4vw, 2.8rem);
-    }
-
-    p {
-      line-height: 1.7;
-      color: var(--muted);
-    }
-
-    .status {
-      margin: 20px 0;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.7);
-      color: var(--text);
-    }
-
-    .row {
-      margin-top: 14px;
-    }
-
-    .label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 0.88rem;
-      color: var(--muted);
-    }
-
-    .value {
-      font-weight: 700;
-      word-break: break-word;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 24px;
-    }
-
-    .login-form,
-    .reset-form {
-      display: grid;
-      gap: 12px;
-      margin-top: 22px;
-    }
-
-    .field {
-      display: grid;
-      gap: 6px;
-    }
-
-    .input {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.88);
-      color: var(--text);
-      font: inherit;
-    }
-
-    .helper {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.92rem;
-      line-height: 1.6;
-    }
-
-    .reports {
-      margin-top: 28px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-    }
-
-    .console-section {
-      margin-top: 28px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-    }
-
-    .section-head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-
-    .section-head h2,
-    .panel-card h3,
-    .reports h2 {
-      margin: 0 0 8px;
-    }
-
-    .panel-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: 16px;
-    }
-
-    .panel-card {
-      padding: 18px;
-      border-radius: 18px;
-      border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.72);
-    }
-
-    .textarea {
-      min-height: 110px;
-      resize: vertical;
-    }
-
-    .textarea--body {
-      min-height: 280px;
-    }
-
-    .blog-status {
-      margin: 0 0 16px;
-      color: var(--muted);
-    }
-
-    .blog-form {
-      display: grid;
-      gap: 12px;
-    }
-
-    .checkbox {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--text);
-      font-size: 0.95rem;
-    }
-
-    .checkbox input {
-      inline-size: 18px;
-      block-size: 18px;
-      accent-color: var(--accent);
-    }
-
-    .blog-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .blog-entry {
-      padding: 16px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: rgba(30, 41, 59, 0.82);
-    }
-
-    .blog-entry-head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .blog-entry-title {
-      margin: 0;
-      color: var(--text);
-      font-size: 1.05rem;
-    }
-
-    .blog-entry-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(34, 197, 94, 0.16);
-      color: #bbf7d0;
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
-
-    .badge.is-draft {
-      background: rgba(250, 204, 21, 0.16);
-      color: #fde68a;
-    }
-
-    .blog-entry-meta,
-    .blog-entry-slug {
-      margin: 0 0 8px;
-      color: var(--muted);
-      line-height: 1.6;
-      word-break: break-word;
-    }
-
-    .blog-entry-summary {
-      margin: 0;
-      color: var(--text);
-      line-height: 1.7;
-      white-space: pre-wrap;
-    }
-
-    .blog-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .is-disabled {
-      opacity: 0.5;
-      pointer-events: none;
-    }
-
-    .reports h2 {
-      margin: 0 0 8px;
-      font-size: 1.35rem;
-    }
-
-    .reports-status {
-      margin: 0 0 16px;
-      color: var(--muted);
-    }
-
-    .reports-list {
-      display: grid;
-      gap: 14px;
-    }
-
-    .report-card {
-      padding: 16px;
-      border-radius: 18px;
-      border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.72);
-    }
-
-    .report-head {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .report-title {
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .report-time {
-      font-size: 0.84rem;
-      color: var(--muted);
-    }
-
-    .report-meta {
-      margin: 8px 0;
-      color: var(--muted);
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .report-box {
-      margin-top: 12px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: rgba(30, 41, 59, 0.85);
-      color: var(--text);
-      white-space: pre-wrap;
-      line-height: 1.65;
-    }
-
-    .report-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    button,
-    a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 12px 18px;
-      border-radius: 12px;
-      border: 1px solid transparent;
-      font: inherit;
-      text-decoration: none;
-    }
-
-    button {
-      cursor: pointer;
-      background: var(--accent);
-      color: #052e16;
-      font-weight: 700;
-    }
-
-    button.secondary,
-    a.secondary {
-      border-color: var(--border);
-      background: transparent;
-      color: var(--text);
-    }
-
-    .danger {
-      background: rgba(239, 68, 68, 0.16);
-      color: #fecaca;
-    }
-
-    @media (max-width: 820px) {
-      .panel-grid {
-        grid-template-columns: 1fr;
-      }
-    }
+    :root { --bg: #09111f; --panel: rgba(15,23,42,0.84); --border: rgba(148,163,184,0.18); --accent: #38bdf8; --text: #e2e8f0; --muted: #94a3b8; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background: radial-gradient(circle at top,rgba(56,189,248,0.2),transparent 28%),linear-gradient(180deg,#0a1326,var(--bg)); }
+    a { color:#bae6fd; text-decoration:none; }
+    main { width:min(920px,100%); margin:0 auto; padding:48px 24px 64px; }
+    h1 { font-size:clamp(2rem,5vw,3rem); margin:0 0 8px; }
+    h2 { font-size:1.4rem; margin:32px 0 12px; color:#f8fafc; }
+    .status { margin:0 0 18px; padding:14px 16px; border-radius:16px; border:1px solid var(--border); background:rgba(15,23,42,0.7); color:var(--muted); }
+    .form-grid { display:grid; gap:12px; max-width:420px; }
+    .form-grid label { display:grid; gap:6px; font-size:0.88rem; color:#cbd5e1; }
+    .form-grid input { width:100%; padding:10px 12px; border-radius:14px; border:1px solid rgba(148,163,184,0.2); background:rgba(15,23,42,0.88); color:#f8fafc; font:inherit; }
+    .btn-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+    button { border:none; cursor:pointer; padding:10px 16px; border-radius:12px; font:inherit; font-weight:700; transition:transform 0.18s ease,opacity 0.18s ease; }
+    button:hover { transform:translateY(-1px); }
+    button:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+    .primary { background:linear-gradient(135deg,var(--accent),#38bdf8); color:#fff; }
+    .secondary { border:1px solid var(--border); background:rgba(15,23,42,0.72); color:#e2e8f0; }
+    .danger { background:rgba(239,68,68,0.16); color:#fecaca; }
+    .report-card, .ban-card { padding:18px; border-radius:18px; border:1px solid var(--border); background:var(--panel); margin-bottom:14px; }
+    .report-head, .ban-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:8px; }
+    .report-title, .ban-user { font-weight:700; color:#f8fafc; }
+    .report-time, .ban-time { font-size:0.82rem; color:var(--muted); }
+    .report-meta, .ban-meta { font-size:0.88rem; color:var(--muted); margin-bottom:10px; white-space:pre-wrap; }
+    .label { font-size:0.76rem; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#93c5fd; margin-bottom:4px; }
+    .report-box, .ban-reason { padding:12px; border-radius:14px; background:rgba(2,6,23,0.45); border:1px solid var(--border); font-size:0.92rem; line-height:1.6; white-space:pre-wrap; margin-bottom:12px; }
+    .report-actions, .ban-actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .tabs { display:flex; gap:8px; margin-bottom:18px; }
+    .tab { padding:8px 16px; border-radius:999px; border:1px solid var(--border); background:rgba(15,23,42,0.5); color:var(--muted); font-size:0.88rem; font-weight:700; cursor:pointer; }
+    .tab.is-active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .blog-entry { padding:18px; border-radius:18px; border:1px solid var(--border); background:var(--panel); margin-bottom:14px; }
+    .blog-entry-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:8px; }
+    .blog-entry-title { margin:0; font-size:1.2rem; color:#f8fafc; }
+    .blog-entry-badges { display:flex; gap:6px; }
+    .badge { display:inline-flex; padding:3px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(15,23,42,0.6); font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:rgba(226,232,240,0.92); }
+    .badge.is-draft { border-color:rgba(251,191,36,0.44); color:#fde68a; }
+    .blog-entry-meta, .blog-entry-slug { font-size:0.88rem; color:var(--muted); margin:4px 0; }
+    .blog-entry-summary { font-size:0.92rem; color:#cbd5e1; line-height:1.6; margin:8px 0; }
+    .blog-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+    .blog-form { display:grid; gap:12px; max-width:680px; margin-bottom:24px; }
+    .blog-form label { display:grid; gap:6px; font-size:0.88rem; color:#cbd5e1; }
+    .blog-form input, .blog-form textarea { width:100%; padding:10px 12px; border-radius:14px; border:1px solid rgba(148,163,184,0.2); background:rgba(15,23,42,0.88); color:#f8fafc; font:inherit; }
+    .blog-form textarea { min-height:180px; resize:vertical; line-height:1.6; }
+    .blog-form .checkbox-row { display:flex; align-items:center; gap:8px; }
+    .visitor-uid { margin-top:12px; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:rgba(15,23,42,0.5); font-size:0.82rem; color:var(--muted); }
+    footer { padding:24px; text-align:center; color:var(--muted); background:rgba(2,6,23,0.44); }
+    .footer-links { margin-top:10px; display:flex; flex-wrap:wrap; justify-content:center; gap:12px 18px; font-size:0.92rem; }
+    @media(max-width:640px){ main{padding:32px 18px 48px;} .btn-row{flex-direction:column;} button{width:100%;} }
   </style>
 </head>
 <body>
   <main>
     <h1>Owner Console</h1>
-    <p>こちらで owner としてログインしておくと、サイト上のコメント削除、通報確認、ブログ投稿をご利用いただけます。</p>
+    <p class="status" data-owner-page-status>読み込んでいます...</p>
 
-    <div class="row">
-      <span class="label">ログイン状態</span>
-    </div>
-
-    <div class="status" data-owner-page-status>
-      読み込んでいます...
-    </div>
-
-    <div class="row" data-owner-visitor-uid-row hidden>
-      <span class="label">固定コメントUID</span>
-      <span class="value" data-owner-visitor-uid></span>
-    </div>
-
-    <form class="login-form" data-owner-login-form>
-      <label class="field">
-        <span class="label">パスワード</span>
-        <input class="input" type="password" autocomplete="current-password" data-owner-password />
-      </label>
-      <p class="helper">通常のログイン用です。初回設定やお忘れの場合は、下のボタンから再設定メールを送信できます。</p>
-      <div class="actions">
-        <button type="submit" data-owner-page-login>ログイン</button>
+    <form class="form-grid" data-owner-login-form>
+      <label>パスワード<input type="password" data-owner-password autocomplete="current-password" required /></label>
+      <div class="btn-row">
+        <button type="submit" class="primary" data-owner-page-login>ログイン</button>
         <button type="button" class="secondary" data-owner-page-signup>初回登録</button>
         <button type="button" class="secondary" data-owner-page-reset>パスワード再設定</button>
-        <button type="button" class="secondary" data-owner-page-logout hidden>ログアウト</button>
-        <a class="secondary" href="index.html">ホームへ戻る</a>
       </div>
     </form>
 
-    <form class="reset-form" data-owner-reset-form hidden>
-      <label class="field">
-        <span class="label">新しいパスワード</span>
-        <input class="input" type="password" autocomplete="new-password" data-owner-new-password />
-      </label>
-      <p class="helper">再設定メールからアクセスした場合のみ表示されます。保存後は通常のログイン画面へ戻れます。</p>
-      <div class="actions">
-        <button type="submit" data-owner-page-save-password>新しいパスワードを保存</button>
-      </div>
+    <form class="form-grid" data-owner-reset-form hidden>
+      <label>新しいパスワード<input type="password" data-owner-new-password autocomplete="new-password" minlength="8" required /></label>
+      <div class="btn-row"><button type="submit" class="primary" data-owner-page-save-password>新しいパスワードを保存</button></div>
     </form>
 
-    <section class="console-section" data-owner-blog-section hidden>
-      <div class="section-head">
-        <div>
-          <h2>ブログ管理</h2>
-          <p class="helper">ブログ本文はここから作れる。公開チェックを外すと、公開ページには出さずに下書き保存できる。</p>
-        </div>
-        <a class="secondary" href="blog.html">公開ブログを見る</a>
-      </div>
-      <p class="blog-status" data-owner-blog-status>owner としてログインすると使える。</p>
+    <div class="btn-row" style="margin-top:18px;">
+      <button type="button" class="secondary" data-owner-page-logout hidden>ログアウト</button>
+      <a class="secondary" href="index.html" style="display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;">ホームへ戻る</a>
+    </div>
 
-      <div class="panel-grid">
-        <form class="panel-card blog-form" data-owner-blog-form>
-          <label class="field">
-            <span class="label">タイトル</span>
-            <input class="input" type="text" maxlength="120" data-owner-blog-title />
-          </label>
+    <div class="visitor-uid" data-owner-visitor-uid-row hidden>固定コメントUID: <span data-owner-visitor-uid></span></div>
 
-          <label class="field">
-            <span class="label">slug</span>
-            <input class="input" type="text" maxlength="80" data-owner-blog-slug />
-          </label>
+    <div class="tabs" data-owner-tabs hidden>
+      <button type="button" class="tab is-active" data-owner-tab="reports">通報一覧</button>
+      <button type="button" class="tab" data-owner-tab="bans">BAN一覧</button>
+      <button type="button" class="tab" data-owner-tab="blog">ブログ管理</button>
+    </div>
 
-          <label class="field">
-            <span class="label">概要</span>
-            <textarea class="input textarea" maxlength="220" data-owner-blog-summary></textarea>
-          </label>
-
-          <label class="field">
-            <span class="label">画像URL</span>
-            <input class="input" type="url" inputmode="url" maxlength="2000" placeholder="https://example.com/image.png" data-owner-blog-image-url />
-          </label>
-
-          <label class="field">
-            <span class="label">本文</span>
-            <textarea class="input textarea textarea--body" data-owner-blog-body></textarea>
-          </label>
-
-          <label class="checkbox">
-            <input type="checkbox" data-owner-blog-published checked />
-            <span>公開する</span>
-          </label>
-
-          <p class="helper">slug を空にするとタイトルから自動生成する。画像を出したいときだけ画像URLを貼ってね。コメント欄には画像を送れない。</p>
-
-          <div class="actions">
-            <button type="submit" data-owner-blog-save>記事を保存</button>
-            <button type="button" class="secondary" data-owner-blog-cancel hidden>編集をやめる</button>
-          </div>
-        </form>
-
-        <div class="panel-card">
-          <h3>記事一覧</h3>
-          <div class="blog-list" data-owner-blog-list></div>
-        </div>
-      </div>
+    <section data-owner-reports-section hidden>
+      <h2>通報一覧</h2>
+      <p class="status" data-owner-reports-status>ログインすると表示されます。</p>
+      <div data-owner-reports-list></div>
     </section>
 
-    <section class="reports console-section" data-owner-reports-section hidden>
-      <h2>通報一覧</h2>
-      <p class="reports-status" data-owner-reports-status>ログインすると表示されます。</p>
-      <div class="reports-list" data-owner-reports-list></div>
+    <section data-owner-bans-section hidden>
+      <h2>BAN一覧</h2>
+      <p class="status" data-owner-bans-status>ログインすると表示されます。</p>
+      <div data-owner-bans-list></div>
+    </section>
+
+    <section data-owner-blog-section hidden>
+      <h2>ブログ管理</h2>
+      <p class="status" data-owner-blog-status>owner としてログインすると使える。</p>
+      <form class="blog-form" data-owner-blog-form>
+        <label>タイトル<input type="text" data-owner-blog-title maxlength="120" required /></label>
+        <label>slug<input type="text" data-owner-blog-slug pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$" /></label>
+        <label>概要<textarea data-owner-blog-summary maxlength="220"></textarea></label>
+        <label>画像URL<input type="url" data-owner-blog-image-url maxlength="2000" /></label>
+        <label>本文<textarea data-owner-blog-body maxlength="12000" required></textarea></label>
+        <label class="checkbox-row"><input type="checkbox" data-owner-blog-published checked />公開する</label>
+        <div class="btn-row">
+          <button type="submit" class="primary" data-owner-blog-save>記事を保存</button>
+          <button type="button" class="secondary" data-owner-blog-cancel hidden>編集をやめる</button>
+        </div>
+      </form>
+      <h3>記事一覧</h3>
+      <div data-owner-blog-list></div>
     </section>
   </main>
 
+  <footer>
+    © 2026 Conbi Fan
+    <div class="footer-links"><a href="index.html">ホーム</a><a href="blog.html">ブログ</a><a href="rules.html">コメントルール</a></div>
+  </footer>
+
   <script src="site-interactions-config.js"></script>
+  <script type="module" src="site-interactions.js"></script>
+  <script type="module" src="blog.js"></script>
   <script type="module" src="owner.js"></script>
 </body>
 </html>

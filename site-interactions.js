@@ -9,49 +9,20 @@ const SESSION_COOKIE_BASE = "cf-supabase-auth";
 const COOKIE_CHUNK_SIZE = 3500;
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 const SUPABASE_REQUEST_TIMEOUT_MS = 15000;
-const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
-  dateStyle: "short",
-  timeStyle: "short"
-});
-
+const dateFormatter = new Intl.DateTimeFormat("ja-JP", { dateStyle: "short", timeStyle: "short" });
 const config = normalizeConfig(window.CF_INTERACTIONS_CONFIG || {});
 const widgetContexts = new Set();
-const clientState = {
-  client: null,
-  user: null,
-  owner: false
-};
-
+const clientState = { client: null, user: null, owner: false };
 let clientPromise = null;
 let observerStarted = false;
+
 const confirmDialogState = {
-  activeElement: null,
-  body: null,
-  cancelButton: null,
-  cancelValue: false,
-  card: null,
-  chrome: null,
-  chromeLabel: null,
-  chromeState: null,
-  confirmButton: null,
-  confirmHandler: null,
-  eyebrow: null,
-  field: null,
-  fieldError: null,
-  fieldCounter: null,
-  fieldInfo: null,
-  fieldHint: null,
-  fieldInput: null,
-  fieldLabel: null,
-  hideTimer: 0,
-  infoList: null,
-  infoPanel: null,
-  infoTitle: null,
-  initialFocus: null,
-  keydownHandler: null,
-  resolver: null,
-  root: null,
-  title: null
+  activeElement: null, body: null, cancelButton: null, cancelValue: false, card: null,
+  chrome: null, chromeLabel: null, chromeState: null, confirmButton: null, confirmHandler: null,
+  eyebrow: null, field: null, fieldError: null, fieldCounter: null, fieldInfo: null,
+  fieldHint: null, fieldInput: null, fieldLabel: null, hideTimer: 0, infoList: null,
+  infoPanel: null, infoTitle: null, initialFocus: null, keydownHandler: null, resolver: null,
+  root: null, title: null
 };
 
 function normalizeConfig(rawConfig) {
@@ -64,87 +35,39 @@ function normalizeConfig(rawConfig) {
   };
 }
 
-function hasSupabaseConfig() {
-  return Boolean(config.supabaseUrl && config.supabaseAnonKey);
-}
+function hasSupabaseConfig() { return Boolean(config.supabaseUrl && config.supabaseAnonKey); }
 
 function readCookie(name) {
-  const match = document.cookie
-    .split("; ")
-    .find(function (entry) {
-      return entry.startsWith(name + "=");
-    });
-
-  if (!match) {
-    return null;
-  }
-
+  const match = document.cookie.split("; ").find(function (entry) { return entry.startsWith(name + "="); });
+  if (!match) return null;
   return decodeURIComponent(match.slice(name.length + 1));
 }
 
 function writeCookie(name, value, maxAgeSeconds) {
   const secure = location.protocol === "https:" ? "; Secure" : "";
-  document.cookie =
-    name +
-    "=" +
-    encodeURIComponent(value) +
-    "; path=/; max-age=" +
-    maxAgeSeconds +
-    "; SameSite=Lax" +
-    secure;
+  document.cookie = name + "=" + encodeURIComponent(value) + "; path=/; max-age=" + maxAgeSeconds + "; SameSite=Lax" + secure;
 }
 
 function removeCookie(name) {
   const secure = location.protocol === "https:" ? "; Secure" : "";
-  document.cookie =
-    name +
-    "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax" +
-    secure;
+  document.cookie = name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax" + secure;
 }
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function isUuid(value) {
-  return UUID_PATTERN.test(String(value || ""));
-}
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isUuid(value) { return UUID_PATTERN.test(String(value || "")); }
 
 function generateVisitorUid() {
-  try {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-  } catch (_) {
-    // ignore
-  }
-
+  try { if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID(); } catch (_) {}
   try {
     if (typeof crypto !== "undefined" && crypto.getRandomValues) {
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
       bytes[6] = (bytes[6] & 0x0f) | 0x40;
       bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-      const hex = Array.from(bytes, function (byte) {
-        return byte.toString(16).padStart(2, "0");
-      });
-
-      return (
-        hex.slice(0, 4).join("") +
-        "-" +
-        hex.slice(4, 6).join("") +
-        "-" +
-        hex.slice(6, 8).join("") +
-        "-" +
-        hex.slice(8, 10).join("") +
-        "-" +
-        hex.slice(10, 16).join("")
-      );
+      const hex = Array.from(bytes, function (byte) { return byte.toString(16).padStart(2, "0"); });
+      return hex.slice(0, 4).join("") + "-" + hex.slice(4, 6).join("") + "-" + hex.slice(6, 8).join("") + "-" + hex.slice(8, 10).join("") + "-" + hex.slice(10, 16).join("");
     }
-  } catch (_) {
-    // ignore
-  }
-
+  } catch (_) {}
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (char) {
     const randomNibble = (Math.random() * 16) | 0;
     const value = char === "x" ? randomNibble : (randomNibble & 0x3) | 0x8;
@@ -154,10 +77,7 @@ function generateVisitorUid() {
 
 function getOrCreateVisitorUid() {
   const existing = readCookie(VISITOR_UID_COOKIE);
-  if (existing && isUuid(existing)) {
-    return existing;
-  }
-
+  if (existing && isUuid(existing)) return existing;
   const uid = generateVisitorUid();
   writeCookie(VISITOR_UID_COOKIE, uid, COOKIE_MAX_AGE);
   return uid;
@@ -166,418 +86,162 @@ function getOrCreateVisitorUid() {
 async function fetchWithTimeout(input, init) {
   const controller = new AbortController();
   const originalSignal = init && init.signal;
-  const timeoutId = window.setTimeout(function () {
-    controller.abort();
-  }, SUPABASE_REQUEST_TIMEOUT_MS);
-
+  const timeoutId = window.setTimeout(function () { controller.abort(); }, SUPABASE_REQUEST_TIMEOUT_MS);
   if (originalSignal) {
-    if (originalSignal.aborted) {
-      controller.abort();
-    } else {
-      originalSignal.addEventListener(
-        "abort",
-        function () {
-          controller.abort();
-        },
-        { once: true }
-      );
-    }
+    if (originalSignal.aborted) controller.abort();
+    else originalSignal.addEventListener("abort", function () { controller.abort(); }, { once: true });
   }
-
-  try {
-    return await fetch(input, Object.assign({}, init || {}, { signal: controller.signal }));
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
+  try { return await fetch(input, Object.assign({}, init || {}, { signal: controller.signal })); }
+  finally { window.clearTimeout(timeoutId); }
 }
 
 function listChunkCookies(baseName) {
-  return document.cookie
-    .split("; ")
-    .map(function (entry) {
-      const separator = entry.indexOf("=");
-      return {
-        name: separator === -1 ? entry : entry.slice(0, separator),
-        value: separator === -1 ? "" : entry.slice(separator + 1)
-      };
-    })
-    .filter(function (entry) {
-      return entry.name === baseName || entry.name.startsWith(baseName + ".");
-    })
+  return document.cookie.split("; ").map(function (entry) {
+    const separator = entry.indexOf("=");
+    return { name: separator === -1 ? entry : entry.slice(0, separator), value: separator === -1 ? "" : entry.slice(separator + 1) };
+  }).filter(function (entry) { return entry.name === baseName || entry.name.startsWith(baseName + "."); })
     .sort(function (left, right) {
-      if (left.name === right.name) {
-        return 0;
-      }
-
-      if (left.name === baseName) {
-        return -1;
-      }
-
-      if (right.name === baseName) {
-        return 1;
-      }
-
-      const leftIndex = Number(left.name.split(".").pop());
-      const rightIndex = Number(right.name.split(".").pop());
-      return leftIndex - rightIndex;
+      if (left.name === right.name) return 0;
+      if (left.name === baseName) return -1;
+      if (right.name === baseName) return 1;
+      return Number(left.name.split(".").pop()) - Number(right.name.split(".").pop());
     });
 }
 
-function clearChunkCookies(baseName) {
-  listChunkCookies(baseName).forEach(function (entry) {
-    removeCookie(entry.name);
-  });
-}
+function clearChunkCookies(baseName) { listChunkCookies(baseName).forEach(function (entry) { removeCookie(entry.name); }); }
 
 function createSessionStorageAdapter() {
   return {
     getItem: function () {
       const cookies = listChunkCookies(SESSION_COOKIE_BASE);
-      if (!cookies.length) {
-        return null;
-      }
-
-      return cookies
-        .map(function (entry) {
-          return decodeURIComponent(entry.value);
-        })
-        .join("");
+      if (!cookies.length) return null;
+      return cookies.map(function (entry) { return decodeURIComponent(entry.value); }).join("");
     },
     setItem: function (_, value) {
       clearChunkCookies(SESSION_COOKIE_BASE);
-
-      if (!value) {
-        return;
-      }
-
-      if (value.length <= COOKIE_CHUNK_SIZE) {
-        writeCookie(SESSION_COOKIE_BASE, value, COOKIE_MAX_AGE);
-        return;
-      }
-
+      if (!value) return;
+      if (value.length <= COOKIE_CHUNK_SIZE) { writeCookie(SESSION_COOKIE_BASE, value, COOKIE_MAX_AGE); return; }
       for (let index = 0; index < value.length; index += COOKIE_CHUNK_SIZE) {
         const chunk = value.slice(index, index + COOKIE_CHUNK_SIZE);
-        const chunkName = SESSION_COOKIE_BASE + "." + index / COOKIE_CHUNK_SIZE;
-        writeCookie(chunkName, chunk, COOKIE_MAX_AGE);
+        writeCookie(SESSION_COOKIE_BASE + "." + index / COOKIE_CHUNK_SIZE, chunk, COOKIE_MAX_AGE);
       }
     },
-    removeItem: function () {
-      clearChunkCookies(SESSION_COOKIE_BASE);
-    }
+    removeItem: function () { clearChunkCookies(SESSION_COOKIE_BASE); }
   };
 }
 
-function readDisplayName() {
-  return readCookie(DISPLAY_NAME_COOKIE) || "";
-}
-
-function saveDisplayName(name) {
-  writeCookie(DISPLAY_NAME_COOKIE, name, COOKIE_MAX_AGE);
-}
-
-function clipCharacters(value, maxCharacters) {
-  const safeMax = Math.max(0, Number(maxCharacters) || 0);
-  return Array.from(String(value || "")).slice(0, safeMax).join("");
-}
-
-function normalizeDisplayName(value) {
-  const cleaned = String(value || "")
-    .replace(/[\r\n\t]+/g, " ")
-    .trim();
-
-  return clipCharacters(cleaned, MAX_DISPLAY_NAME_LENGTH);
-}
-
-function defaultDisplayName() {
-  return "名無し";
-}
-
-function pagePath() {
-  const path = location.pathname || "/index.html";
-  return path === "/" ? "/index.html" : path;
-}
-
-function threadKey(id) {
-  return pagePath() + "::" + id;
-}
-
-function formatDate(value) {
-  try {
-    return dateFormatter.format(new Date(value));
-  } catch (error) {
-    return "";
-  }
-}
-
-function createElement(tag, className, text) {
-  const element = document.createElement(tag);
-  if (className) {
-    element.className = className;
-  }
-  if (typeof text === "string") {
-    element.textContent = text;
-  }
-  return element;
-}
-
-function dataTransferHasImage(dataTransfer) {
-  if (!dataTransfer || !dataTransfer.items) {
-    return false;
-  }
-
-  return Array.from(dataTransfer.items).some(function (item) {
-    return item && /^image\//i.test(item.type || "");
-  });
-}
-
-function formatFixedUid(userId) {
-  const normalized = String(userId || "")
-    .replace(/[^a-z0-9]/gi, "")
-    .toUpperCase();
-
-  if (!normalized) {
-    return "UID-READYING";
-  }
-
-  return "UID-" + normalized.slice(0, 16);
-}
+function readDisplayName() { return readCookie(DISPLAY_NAME_COOKIE) || ""; }
+function saveDisplayName(name) { writeCookie(DISPLAY_NAME_COOKIE, name, COOKIE_MAX_AGE); }
+function clipCharacters(value, maxCharacters) { return Array.from(String(value || "")).slice(0, Math.max(0, Number(maxCharacters) || 0)).join(""); }
+function normalizeDisplayName(value) { return clipCharacters(String(value || "").replace(/[\r\n\t]+/g, " ").trim(), MAX_DISPLAY_NAME_LENGTH); }
+function defaultDisplayName() { return "名無し"; }
+function pagePath() { const path = location.pathname || "/index.html"; return path === "/" ? "/index.html" : path; }
+function threadKey(id) { return pagePath() + "::" + id; }
+function formatDate(value) { try { return dateFormatter.format(new Date(value)); } catch (error) { return ""; } }
+function createElement(tag, className, text) { const element = document.createElement(tag); if (className) element.className = className; if (typeof text === "string") element.textContent = text; return element; }
+function dataTransferHasImage(dataTransfer) { if (!dataTransfer || !dataTransfer.items) return false; return Array.from(dataTransfer.items).some(function (item) { return item && /^image\//i.test(item.type || ""); }); }
+function formatFixedUid(userId) { const normalized = String(userId || "").replace(/[^a-z0-9]/gi, "").toUpperCase(); if (!normalized) return "UID-READYING"; return "UID-" + normalized.slice(0, 16); }
 
 function setDialogInfo(dialog, title, items) {
-  const safeItems = Array.isArray(items)
-    ? items.filter(function (item) {
-        return typeof item === "string" && item.trim();
-      })
-    : [];
-
+  const safeItems = Array.isArray(items) ? items.filter(function (item) { return typeof item === "string" && item.trim(); }) : [];
   dialog.infoTitle.textContent = title || "";
   dialog.infoList.innerHTML = "";
-
-  safeItems.forEach(function (item) {
-    dialog.infoList.appendChild(createElement("li", "cf-modal__info-item", item));
-  });
-
+  safeItems.forEach(function (item) { dialog.infoList.appendChild(createElement("li", "cf-modal__info-item", item)); });
   dialog.infoPanel.hidden = !safeItems.length;
 }
 
 function updateDialogFieldCounter(dialog) {
-  if (!dialog.fieldCounter) {
-    return;
-  }
-
+  if (!dialog.fieldCounter) return;
   const maxLength = Number(dialog.fieldInput.maxLength) || 0;
-  if (dialog.field.hidden || !maxLength) {
-    dialog.fieldCounter.hidden = true;
-    dialog.fieldCounter.textContent = "";
-    return;
-  }
-
+  if (dialog.field.hidden || !maxLength) { dialog.fieldCounter.hidden = true; dialog.fieldCounter.textContent = ""; return; }
   dialog.fieldCounter.hidden = false;
-  dialog.fieldCounter.textContent =
-    dialog.fieldInput.value.length + " / " + maxLength;
+  dialog.fieldCounter.textContent = dialog.fieldInput.value.length + " / " + maxLength;
 }
 
 function ensureConfirmDialog() {
-  if (confirmDialogState.root) {
-    return confirmDialogState;
-  }
-
-  const root = createElement("div", "cf-modal");
-  root.hidden = true;
-
-  const card = createElement("div", "cf-modal__card");
-  card.setAttribute("role", "dialog");
-  card.setAttribute("aria-modal", "true");
-
+  if (confirmDialogState.root) return confirmDialogState;
+  const root = createElement("div", "cf-modal"); root.hidden = true;
+  const card = createElement("div", "cf-modal__card"); card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true");
   const chrome = createElement("div", "cf-modal__chrome");
-  const chromeLabel = createElement("span", "cf-modal__chrome-label", "");
-  const chromeState = createElement("span", "cf-modal__chrome-state", "");
-  const eyebrow = createElement("p", "cf-modal__eyebrow", "");
+  const chromeLabel = createElement("span", "cf-modal__chrome-label", " ");
+  const chromeState = createElement("span", "cf-modal__chrome-state", " ");
+  const eyebrow = createElement("p", "cf-modal__eyebrow", " ");
   const title = createElement("h3", "cf-modal__title", "確認");
-  const body = createElement("p", "cf-modal__body", "");
+  const body = createElement("p", "cf-modal__body", " ");
   const infoPanel = createElement("div", "cf-modal__info");
-  const infoTitle = createElement("p", "cf-modal__info-title", "");
+  const infoTitle = createElement("p", "cf-modal__info-title", " ");
   const infoList = createElement("ul", "cf-modal__info-list");
   const field = createElement("label", "cf-modal__field");
   const fieldInfo = createElement("span", "cf-modal__field-head");
   const fieldLabel = createElement("span", "cf-modal__field-label", "入力");
-  const fieldCounter = createElement("span", "cf-modal__field-counter", "");
+  const fieldCounter = createElement("span", "cf-modal__field-counter", " ");
   const fieldInput = createElement("textarea", "cf-modal__textarea");
-  const fieldHint = createElement("span", "cf-modal__field-hint", "");
-  const fieldError = createElement("span", "cf-modal__field-error", "");
+  const fieldHint = createElement("span", "cf-modal__field-hint", " ");
+  const fieldError = createElement("span", "cf-modal__field-error", " ");
   const actions = createElement("div", "cf-modal__actions");
-  const cancelButton = createElement(
-    "button",
-    "cf-modal__button cf-modal__button--secondary",
-    "キャンセル"
-  );
-  const confirmButton = createElement(
-    "button",
-    "cf-modal__button cf-modal__button--danger",
-    "削除する"
-  );
-
-  title.id = "cf-modal-title";
-  body.id = "cf-modal-body";
-  fieldInput.id = "cf-modal-input";
-  card.setAttribute("aria-labelledby", title.id);
-  card.setAttribute("aria-describedby", body.id);
-  cancelButton.type = "button";
-  confirmButton.type = "button";
-  chrome.hidden = true;
-  infoPanel.hidden = true;
-  field.hidden = true;
-  fieldInput.rows = 5;
-  fieldCounter.hidden = true;
-  fieldHint.hidden = true;
-  fieldError.hidden = true;
+  const cancelButton = createElement("button", "cf-modal__button cf-modal__button--secondary", "キャンセル");
+  const confirmButton = createElement("button", "cf-modal__button cf-modal__button--danger", "削除する");
+  title.id = "cf-modal-title"; body.id = "cf-modal-body"; fieldInput.id = "cf-modal-input";
+  card.setAttribute("aria-labelledby", title.id); card.setAttribute("aria-describedby", body.id);
+  cancelButton.type = "button"; confirmButton.type = "button";
+  chrome.hidden = true; infoPanel.hidden = true; field.hidden = true;
+  fieldInput.rows = 5; fieldCounter.hidden = true; fieldHint.hidden = true; fieldError.hidden = true;
   fieldInput.setAttribute("aria-labelledby", title.id);
-
-  chrome.appendChild(chromeLabel);
-  chrome.appendChild(chromeState);
-  infoPanel.appendChild(infoTitle);
-  infoPanel.appendChild(infoList);
-  fieldInfo.appendChild(fieldLabel);
-  fieldInfo.appendChild(fieldCounter);
-  field.appendChild(fieldInfo);
-  field.appendChild(fieldInput);
-  field.appendChild(fieldHint);
-  field.appendChild(fieldError);
-
-  actions.appendChild(cancelButton);
-  actions.appendChild(confirmButton);
-  card.appendChild(chrome);
-  card.appendChild(eyebrow);
-  card.appendChild(title);
-  card.appendChild(body);
-  card.appendChild(infoPanel);
-  card.appendChild(field);
-  card.appendChild(actions);
-  root.appendChild(card);
-  document.body.appendChild(root);
-
-  root.addEventListener("click", function (event) {
-    if (event.target === root) {
-      closeConfirmDialog(confirmDialogState.cancelValue);
-    }
-  });
-
-  cancelButton.addEventListener("click", function () {
-    closeConfirmDialog(confirmDialogState.cancelValue);
-  });
-
-  confirmButton.addEventListener("click", function () {
-    if (typeof confirmDialogState.confirmHandler === "function") {
-      confirmDialogState.confirmHandler();
-      return;
-    }
-
-    closeConfirmDialog(true);
-  });
-
-  fieldInput.addEventListener("input", function () {
-    fieldError.hidden = true;
-    fieldError.textContent = "";
-    fieldInput.removeAttribute("aria-invalid");
-    updateDialogFieldCounter(confirmDialogState);
-  });
-
-  fieldInput.addEventListener("keydown", function (event) {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-      if (typeof confirmDialogState.confirmHandler === "function") {
-        confirmDialogState.confirmHandler();
-      }
-    }
-  });
-
-  confirmDialogState.card = card;
-  confirmDialogState.chrome = chrome;
-  confirmDialogState.chromeLabel = chromeLabel;
-  confirmDialogState.chromeState = chromeState;
-  confirmDialogState.eyebrow = eyebrow;
-  confirmDialogState.root = root;
-  confirmDialogState.title = title;
-  confirmDialogState.body = body;
-  confirmDialogState.infoPanel = infoPanel;
-  confirmDialogState.infoTitle = infoTitle;
-  confirmDialogState.infoList = infoList;
-  confirmDialogState.field = field;
-  confirmDialogState.fieldInfo = fieldInfo;
-  confirmDialogState.fieldLabel = fieldLabel;
-  confirmDialogState.fieldCounter = fieldCounter;
-  confirmDialogState.fieldInput = fieldInput;
-  confirmDialogState.fieldHint = fieldHint;
-  confirmDialogState.fieldError = fieldError;
-  confirmDialogState.cancelButton = cancelButton;
-  confirmDialogState.confirmButton = confirmButton;
+  chrome.appendChild(chromeLabel); chrome.appendChild(chromeState);
+  infoPanel.appendChild(infoTitle); infoPanel.appendChild(infoList);
+  fieldInfo.appendChild(fieldLabel); fieldInfo.appendChild(fieldCounter);
+  field.appendChild(fieldInfo); field.appendChild(fieldInput); field.appendChild(fieldHint); field.appendChild(fieldError);
+  actions.appendChild(cancelButton); actions.appendChild(confirmButton);
+  card.appendChild(chrome); card.appendChild(eyebrow); card.appendChild(title); card.appendChild(body);
+  card.appendChild(infoPanel); card.appendChild(field); card.appendChild(actions);
+  root.appendChild(card); document.body.appendChild(root);
+  root.addEventListener("click", function (event) { if (event.target === root) closeConfirmDialog(confirmDialogState.cancelValue); });
+  cancelButton.addEventListener("click", function () { closeConfirmDialog(confirmDialogState.cancelValue); });
+  confirmButton.addEventListener("click", function () { if (typeof confirmDialogState.confirmHandler === "function") { confirmDialogState.confirmHandler(); return; } closeConfirmDialog(true); });
+  fieldInput.addEventListener("input", function () { fieldError.hidden = true; fieldError.textContent = ""; fieldInput.removeAttribute("aria-invalid"); updateDialogFieldCounter(confirmDialogState); });
+  fieldInput.addEventListener("keydown", function (event) { if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); if (typeof confirmDialogState.confirmHandler === "function") confirmDialogState.confirmHandler(); } });
+  confirmDialogState.card = card; confirmDialogState.chrome = chrome; confirmDialogState.chromeLabel = chromeLabel;
+  confirmDialogState.chromeState = chromeState; confirmDialogState.eyebrow = eyebrow; confirmDialogState.root = root;
+  confirmDialogState.title = title; confirmDialogState.body = body; confirmDialogState.infoPanel = infoPanel;
+  confirmDialogState.infoTitle = infoTitle; confirmDialogState.infoList = infoList; confirmDialogState.field = field;
+  confirmDialogState.fieldInfo = fieldInfo; confirmDialogState.fieldLabel = fieldLabel; confirmDialogState.fieldCounter = fieldCounter;
+  confirmDialogState.fieldInput = fieldInput; confirmDialogState.fieldHint = fieldHint; confirmDialogState.fieldError = fieldError;
+  confirmDialogState.cancelButton = cancelButton; confirmDialogState.confirmButton = confirmButton;
   return confirmDialogState;
 }
 
 function configureConfirmDialog(options) {
   const dialog = ensureConfirmDialog();
   const settings = options || {};
-
-  if (dialog.resolver) {
-    closeConfirmDialog(dialog.cancelValue);
-  }
-
-  if (dialog.hideTimer) {
-    window.clearTimeout(dialog.hideTimer);
-    dialog.hideTimer = 0;
-  }
-
-  dialog.activeElement =
-    document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  dialog.cancelValue = Object.prototype.hasOwnProperty.call(settings, "cancelValue")
-    ? settings.cancelValue
-    : false;
-  dialog.confirmHandler = null;
-  dialog.initialFocus = null;
+  if (dialog.resolver) closeConfirmDialog(dialog.cancelValue);
+  if (dialog.hideTimer) { window.clearTimeout(dialog.hideTimer); dialog.hideTimer = 0; }
+  dialog.activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  dialog.cancelValue = Object.prototype.hasOwnProperty.call(settings, "cancelValue") ? settings.cancelValue : false;
+  dialog.confirmHandler = null; dialog.initialFocus = null;
   dialog.root.classList.toggle("is-report", Boolean(settings.reportMode));
   dialog.card.classList.toggle("is-report", Boolean(settings.reportMode));
-  dialog.eyebrow.textContent = settings.eyebrow || "";
-  dialog.eyebrow.hidden = !settings.eyebrow;
-  dialog.title.textContent = settings.title || "確認";
-  dialog.body.textContent = settings.body || "";
-  dialog.chromeLabel.textContent = settings.chromeLabel || "";
-  dialog.chromeState.textContent = settings.chromeState || "";
+  dialog.eyebrow.textContent = settings.eyebrow || " "; dialog.eyebrow.hidden = !settings.eyebrow;
+  dialog.title.textContent = settings.title || "確認"; dialog.body.textContent = settings.body || " ";
+  dialog.chromeLabel.textContent = settings.chromeLabel || " "; dialog.chromeState.textContent = settings.chromeState || " ";
   dialog.chrome.hidden = !dialog.chromeLabel.textContent && !dialog.chromeState.textContent;
-  setDialogInfo(dialog, settings.infoTitle || "", settings.infoItems || []);
+  setDialogInfo(dialog, settings.infoTitle || " ", settings.infoItems || []);
   dialog.cancelButton.textContent = settings.cancelText || "キャンセル";
   dialog.confirmButton.textContent = settings.confirmText || "OK";
-  dialog.confirmButton.className =
-    "cf-modal__button " +
-    (settings.tone === "danger"
-      ? "cf-modal__button--danger"
-      : "cf-modal__button--primary");
+  dialog.confirmButton.className = "cf-modal__button " + (settings.tone === "danger" ? "cf-modal__button--danger" : "cf-modal__button--primary");
   dialog.card.classList.toggle("is-danger", settings.tone === "danger");
   dialog.card.classList.toggle("is-primary", settings.tone !== "danger");
-  dialog.field.hidden = true;
-  dialog.fieldLabel.textContent = "入力";
-  dialog.fieldInput.value = "";
-  dialog.fieldInput.placeholder = "";
-  dialog.fieldInput.removeAttribute("maxlength");
-  dialog.fieldInput.removeAttribute("aria-invalid");
-  dialog.fieldCounter.hidden = true;
-  dialog.fieldCounter.textContent = "";
-  dialog.fieldHint.hidden = true;
-  dialog.fieldHint.textContent = "";
-  dialog.fieldError.hidden = true;
-  dialog.fieldError.textContent = "";
+  dialog.field.hidden = true; dialog.fieldLabel.textContent = "入力"; dialog.fieldInput.value = " ";
+  dialog.fieldInput.placeholder = " "; dialog.fieldInput.removeAttribute("maxlength");
+  dialog.fieldInput.removeAttribute("aria-invalid"); dialog.fieldCounter.hidden = true;
+  dialog.fieldCounter.textContent = " "; dialog.fieldHint.hidden = true; dialog.fieldHint.textContent = " ";
+  dialog.fieldError.hidden = true; dialog.fieldError.textContent = " ";
   return dialog;
 }
 
 function showConfirmDialog(dialog) {
-  dialog.root.hidden = false;
-  document.body.classList.add("cf-dialog-open");
-  dialog.keydownHandler = function (event) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeConfirmDialog(dialog.cancelValue);
-    }
-  };
+  dialog.root.hidden = false; document.body.classList.add("cf-dialog-open");
+  dialog.keydownHandler = function (event) { if (event.key === "Escape") { event.preventDefault(); closeConfirmDialog(dialog.cancelValue); } };
   document.addEventListener("keydown", dialog.keydownHandler);
-
   return new Promise(function (resolve) {
     dialog.resolver = resolve;
     window.requestAnimationFrame(function () {
@@ -585,12 +249,8 @@ function showConfirmDialog(dialog) {
       const focusTarget = dialog.initialFocus || dialog.confirmButton;
       if (focusTarget && typeof focusTarget.focus === "function") {
         focusTarget.focus();
-        if (
-          focusTarget === dialog.fieldInput &&
-          typeof focusTarget.setSelectionRange === "function"
-        ) {
-          const end = focusTarget.value.length;
-          focusTarget.setSelectionRange(end, end);
+        if (focusTarget === dialog.fieldInput && typeof focusTarget.setSelectionRange === "function") {
+          const end = focusTarget.value.length; focusTarget.setSelectionRange(end, end);
         }
       }
     });
@@ -599,453 +259,181 @@ function showConfirmDialog(dialog) {
 
 function closeConfirmDialog(result) {
   const dialog = ensureConfirmDialog();
-  if (!dialog.resolver) {
-    return;
-  }
-
-  if (dialog.hideTimer) {
-    window.clearTimeout(dialog.hideTimer);
-    dialog.hideTimer = 0;
-  }
-
-  dialog.root.classList.remove("is-open");
-  document.body.classList.remove("cf-dialog-open");
-
-  if (dialog.keydownHandler) {
-    document.removeEventListener("keydown", dialog.keydownHandler);
-    dialog.keydownHandler = null;
-  }
-
-  const resolver = dialog.resolver;
-  const activeElement = dialog.activeElement;
-
-  dialog.resolver = null;
-  dialog.activeElement = null;
-  dialog.confirmHandler = null;
-  dialog.initialFocus = null;
-  dialog.hideTimer = window.setTimeout(function () {
-    dialog.root.hidden = true;
-  }, 160);
-
-  if (activeElement && typeof activeElement.focus === "function") {
-    activeElement.focus();
-  }
-
+  if (!dialog.resolver) return;
+  if (dialog.hideTimer) { window.clearTimeout(dialog.hideTimer); dialog.hideTimer = 0; }
+  dialog.root.classList.remove("is-open"); document.body.classList.remove("cf-dialog-open");
+  if (dialog.keydownHandler) { document.removeEventListener("keydown", dialog.keydownHandler); dialog.keydownHandler = null; }
+  const resolver = dialog.resolver; const activeElement = dialog.activeElement;
+  dialog.resolver = null; dialog.activeElement = null; dialog.confirmHandler = null; dialog.initialFocus = null;
+  dialog.hideTimer = window.setTimeout(function () { dialog.root.hidden = true; }, 160);
+  if (activeElement && typeof activeElement.focus === "function") activeElement.focus();
   resolver(result);
 }
 
 function openConfirmDialog(options) {
   const dialog = configureConfirmDialog(options);
   dialog.initialFocus = dialog.cancelButton;
-  dialog.confirmHandler = function () {
-    closeConfirmDialog(true);
-  };
+  dialog.confirmHandler = function () { closeConfirmDialog(true); };
   return showConfirmDialog(dialog);
 }
 
 function openReportDialog(options) {
   const settings = options || {};
-  const dialog = configureConfirmDialog(
-    Object.assign(
-      {
-        body: "確認に必要な理由をご入力ください。",
-        cancelText: "やめる",
-        cancelValue: null,
-        chromeLabel: "REPORT LINK",
-        chromeState: "OWNER QUEUE",
-        confirmText: "送信する",
-        infoItems: [
-          "送信した内容は owner ページの通報一覧へ追加されます。",
-          "owner が確認し、必要に応じてコメント削除などを行います。",
-          "短くても大丈夫なので、問題点が伝わる内容で入力してください。"
-        ],
-        infoTitle: "送信後の流れ",
-        reportMode: true,
-        tone: "default"
-      },
-      settings
-    )
-  );
-
+  const dialog = configureConfirmDialog(Object.assign({
+    body: "確認に必要な理由をご入力ください。", cancelText: "やめる", cancelValue: null,
+    chromeLabel: "REPORT LINK", chromeState: "OWNER QUEUE", confirmText: "送信する",
+    infoItems: ["送信した内容は owner ページの通報一覧へ追加されます。", "owner が確認し、必要に応じてコメント削除などを行います。", "短くても大丈夫なので、問題点が伝わる内容で入力してください。"],
+    infoTitle: "送信後の流れ", reportMode: true, tone: "default"
+  }, settings));
   dialog.field.hidden = false;
   dialog.fieldLabel.textContent = settings.label || "通報理由";
-  dialog.fieldInput.value = settings.value || "";
-  dialog.fieldInput.placeholder = settings.placeholder || "";
+  dialog.fieldInput.value = settings.value || " ";
+  dialog.fieldInput.placeholder = settings.placeholder || " ";
   dialog.fieldInput.maxLength = settings.maxLength || MAX_REPORT_REASON_LENGTH;
-  dialog.fieldHint.textContent = settings.hint || "";
-  dialog.fieldHint.hidden = !settings.hint;
-  dialog.initialFocus = dialog.fieldInput;
-  updateDialogFieldCounter(dialog);
+  dialog.fieldHint.textContent = settings.hint || " "; dialog.fieldHint.hidden = !settings.hint;
+  dialog.initialFocus = dialog.fieldInput; updateDialogFieldCounter(dialog);
   dialog.confirmHandler = function () {
     const value = dialog.fieldInput.value.trim();
-    if (!value) {
-      dialog.fieldError.textContent =
-        settings.errorText || "通報理由をご入力ください。";
-      dialog.fieldError.hidden = false;
-      dialog.fieldInput.setAttribute("aria-invalid", "true");
-      dialog.fieldInput.focus();
-      return;
-    }
-
+    if (!value) { dialog.fieldError.textContent = settings.errorText || "通報理由をご入力ください。"; dialog.fieldError.hidden = false; dialog.fieldInput.setAttribute("aria-invalid", "true"); dialog.fieldInput.focus(); return; }
     closeConfirmDialog(value);
   };
-
   return showConfirmDialog(dialog);
 }
 
-function defaultOwnerRedirectUrl() {
-  if (!/^https?:/i.test(location.href)) {
-    return "";
-  }
-
-  return location.origin + "/owner.html";
-}
-
-function isOwnerUser(user) {
-  return Boolean(
-    user &&
-      user.email &&
-      config.ownerEmail &&
-      user.email.toLowerCase() === config.ownerEmail
-  );
-}
+function defaultOwnerRedirectUrl() { if (!/^https?:/i.test(location.href)) return ""; return location.origin + "/owner.html"; }
+function isOwnerUser(user) { return Boolean(user && user.email && config.ownerEmail && user.email.toLowerCase() === config.ownerEmail); }
 
 function keepOnlyOwnerSession(user) {
-  if (!user || isOwnerUser(user)) {
-    clientState.user = user || null;
-    clientState.owner = isOwnerUser(user);
-    return;
-  }
-
-  clientState.user = null;
-  clientState.owner = false;
-
-  if (clientState.client) {
-    clientState.client.auth.signOut({ scope: "local" }).catch(function () {
-      // A stale non-owner session should not block public comments.
-    });
-  }
+  if (!user || isOwnerUser(user)) { clientState.user = user || null; clientState.owner = isOwnerUser(user); return; }
+  clientState.user = null; clientState.owner = false;
+  if (clientState.client) clientState.client.auth.signOut({ scope: "local" }).catch(function () {});
 }
 
 async function getClient() {
-  if (!hasSupabaseConfig()) {
-    return null;
-  }
-
+  if (!hasSupabaseConfig()) return null;
   if (!clientPromise) {
     const storage = createSessionStorageAdapter();
     const visitorUid = getOrCreateVisitorUid();
-
     clientState.client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        flowType: "pkce",
-        persistSession: true,
-        storage: storage
-      },
-      global: {
-        fetch: fetchWithTimeout,
-        headers: {
-          "x-client-info": visitorUid
-        }
-      }
+      auth: { autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce", persistSession: true, storage: storage },
+      global: { fetch: fetchWithTimeout, headers: { "x-client-info": visitorUid } }
     });
-
     clientPromise = clientState.client.auth.getSession().then(function (result) {
       const session = result.data ? result.data.session : null;
       keepOnlyOwnerSession(session ? session.user : null);
       return clientState.client;
     });
-
-    clientState.client.auth.onAuthStateChange(function (_, session) {
-      keepOnlyOwnerSession(session ? session.user : null);
-      refreshAllWidgets();
-    });
+    clientState.client.auth.onAuthStateChange(function (_, session) { keepOnlyOwnerSession(session ? session.user : null); refreshAllWidgets(); });
   }
-
   return clientPromise;
 }
 
-async function ensureVisitorSession() {
-  const client = await getClient();
-
-  if (!client) {
-    return null;
-  }
-
-  return {
-    id: getOrCreateVisitorUid()
-  };
-}
-
-function getVisitorUid() {
-  return getOrCreateVisitorUid();
-}
+async function ensureVisitorSession() { const client = await getClient(); if (!client) return null; return { id: getOrCreateVisitorUid() }; }
+function getVisitorUid() { return getOrCreateVisitorUid(); }
 
 async function getOwnerAuthUser() {
-  const client = await getClient();
-  if (!client) {
-    throw new Error("Supabase の設定がまだ入ってない。");
-  }
-
-  const result = await client.auth.getUser();
-  if (result.error) {
-    throw result.error;
-  }
-
-  const user = result.data.user;
-  if (!isOwnerUser(user)) {
-    throw new Error("owner としてログインしてから操作してね。");
-  }
-
+  const client = await getClient(); if (!client) throw new Error("Supabase の設定がまだ入ってない。");
+  const result = await client.auth.getUser(); if (result.error) throw result.error;
+  const user = result.data.user; if (!isOwnerUser(user)) throw new Error("owner としてログインしてから操作してね。");
   return user;
 }
 
 async function signInOwnerWithPassword(password) {
-  const client = await getClient();
-  if (!client) {
-    throw new Error("Supabase の設定がまだ入ってない。");
-  }
-
-  if (!config.ownerEmail) {
-    throw new Error("ownerEmail が未設定。");
-  }
-
-  if (!password) {
-    throw new Error("パスワードを入れて。");
-  }
-
-  const result = await client.auth.signInWithPassword({
-    email: config.ownerEmail,
-    password: password
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
+  const client = await getClient(); if (!client) throw new Error("Supabase の設定がまだ入ってない。");
+  if (!config.ownerEmail) throw new Error("ownerEmail が未設定。"); if (!password) throw new Error("パスワードを入れて。");
+  const result = await client.auth.signInWithPassword({ email: config.ownerEmail, password: password });
+  if (result.error) throw result.error;
 }
 
 async function sendOwnerPasswordReset() {
-  const client = await getClient();
-  if (!client) {
-    throw new Error("Supabase の設定がまだ入ってない。");
-  }
-
-  if (!config.ownerEmail) {
-    throw new Error("ownerEmail が未設定。");
-  }
-
+  const client = await getClient(); if (!client) throw new Error("Supabase の設定がまだ入ってない。");
+  if (!config.ownerEmail) throw new Error("ownerEmail が未設定。");
   const redirectUrl = config.ownerRedirectUrl || defaultOwnerRedirectUrl();
-  const result = await client.auth.resetPasswordForEmail(config.ownerEmail, {
-    redirectTo: redirectUrl || undefined
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
+  const result = await client.auth.resetPasswordForEmail(config.ownerEmail, { redirectTo: redirectUrl || undefined });
+  if (result.error) throw result.error;
 }
 
-async function signOutCurrentUser() {
-  const client = await getClient();
-  if (!client) {
-    return;
-  }
-
-  const result = await client.auth.signOut();
-  if (result.error) {
-    throw result.error;
-  }
-}
+async function signOutCurrentUser() { const client = await getClient(); if (!client) return; const result = await client.auth.signOut(); if (result.error) throw result.error; }
 
 async function fetchThreadState(thread) {
-  const client = await getClient();
-  const user = await ensureVisitorSession();
-
-  const likesPromise = client
-    .from("engagement_likes")
-    .select("user_id")
-    .eq("thread_id", thread);
-
-  const commentsPromise = client
-    .from("engagement_comments")
-    .select(
-      "id, thread_id, page_path, item_label, display_name, is_owner, body, created_at"
-    )
-    .eq("thread_id", thread)
-    .order("created_at", { ascending: false });
-
+  const client = await getClient(); const user = await ensureVisitorSession();
+  const likesPromise = client.from("engagement_likes").select("user_id").eq("thread_id", thread);
+  const commentsPromise = client.from("engagement_comments").select("id, thread_id, page_path, item_label, display_name, is_owner, body, created_at").eq("thread_id", thread).order("created_at", { ascending: false });
   const results = await Promise.all([likesPromise, commentsPromise]);
-  const likesResult = results[0];
-  const commentsResult = results[1];
-
-  if (likesResult.error) {
-    throw likesResult.error;
-  }
-
-  if (commentsResult.error) {
-    throw commentsResult.error;
-  }
-
-  const likeRows = likesResult.data || [];
-  const comments = commentsResult.data || [];
-
-  return {
-    comments: comments,
-    liked: likeRows.some(function (row) {
-      return row.user_id === user.id;
-    }),
-    likes: likeRows.length
-  };
+  if (results[0].error) throw results[0].error; if (results[1].error) throw results[1].error;
+  const likeRows = results[0].data || []; const comments = results[1].data || [];
+  return { comments: comments, liked: likeRows.some(function (row) { return row.user_id === user.id; }), likes: likeRows.length };
 }
 
 async function toggleLike(thread, liked) {
-  const client = await getClient();
-  const user = await ensureVisitorSession();
-
-  if (liked) {
-    const result = await client
-      .from("engagement_likes")
-      .delete()
-      .eq("thread_id", thread)
-      .eq("user_id", user.id);
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return;
-  }
-
-  const result = await client.from("engagement_likes").upsert(
-    {
-      thread_id: thread,
-      user_id: user.id
-    },
-    {
-      onConflict: "thread_id,user_id"
-    }
-  );
-
-  if (result.error) {
-    throw result.error;
-  }
+  const client = await getClient(); const user = await ensureVisitorSession();
+  if (liked) { const result = await client.from("engagement_likes").delete().eq("thread_id", thread).eq("user_id", user.id); if (result.error) throw result.error; return; }
+  const result = await client.from("engagement_likes").upsert({ thread_id: thread, user_id: user.id }, { onConflict: "thread_id,user_id" });
+  if (result.error) throw result.error;
 }
 
 async function addComment(context, text, displayName) {
-  const client = await getClient();
-  const user = await ensureVisitorSession();
-  const result = await client.from("engagement_comments").insert({
-    body: text,
-    display_name: displayName,
-    item_label: context.itemLabel,
-    page_path: pagePath(),
-    thread_id: context.thread,
-    user_id: user.id
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  return;
+  const client = await getClient(); const user = await ensureVisitorSession();
+  const result = await client.from("engagement_comments").insert({ body: text, display_name: displayName, item_label: context.itemLabel, page_path: pagePath(), thread_id: context.thread, user_id: user.id });
+  if (result.error) throw result.error;
 }
 
 async function syncDisplayName(displayName) {
-  const client = await getClient();
-  const user = await ensureVisitorSession();
-  const result = await client
-    .from("engagement_comments")
-    .update({ display_name: displayName })
-    .eq("user_id", user.id);
-
-  if (result.error) {
-    throw result.error;
-  }
+  const client = await getClient(); const user = await ensureVisitorSession();
+  const result = await client.from("engagement_comments").update({ display_name: displayName }).eq("user_id", user.id);
+  if (result.error) throw result.error;
 }
 
-async function deleteComment(commentId) {
-  const client = await getClient();
-  const result = await client.from("engagement_comments").delete().eq("id", commentId);
-
-  if (result.error) {
-    throw result.error;
-  }
-}
+async function deleteComment(commentId) { const client = await getClient(); const result = await client.from("engagement_comments").delete().eq("id", commentId); if (result.error) throw result.error; }
 
 async function createReport(comment, reason) {
-  const client = await getClient();
-  const user = await ensureVisitorSession();
-  const result = await client.from("engagement_reports").insert({
-    comment_author: comment.display_name,
-    comment_body: comment.body,
-    comment_id: comment.id,
-    item_label: comment.item_label,
-    page_path: comment.page_path,
-    reason: reason,
-    reporter_user_id: user.id,
-    thread_id: comment.thread_id
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
+  const client = await getClient(); const user = await ensureVisitorSession();
+  const result = await client.from("engagement_reports").insert({ comment_author: comment.display_name, comment_body: comment.body, comment_id: comment.id, item_label: comment.item_label, page_path: comment.page_path, reason: reason, reporter_user_id: user.id, thread_id: comment.thread_id });
+  if (result.error) throw result.error;
 }
 
 async function fetchReports() {
   const client = await getClient();
-  const result = await client
-    .from("engagement_reports")
-    .select(
-      "id, comment_id, thread_id, page_path, item_label, comment_author, comment_body, reason, created_at, resolved_at"
-    )
-    .order("created_at", { ascending: false });
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  return result.data || [];
+  const result = await client.from("engagement_reports").select("id, comment_id, thread_id, page_path, item_label, comment_author, comment_body, reason, created_at, resolved_at").order("created_at", { ascending: false });
+  if (result.error) throw result.error; return result.data || [];
 }
 
 async function resolveReport(reportId) {
-  const client = await getClient();
-  const user = await getOwnerAuthUser();
-  const result = await client
-    .from("engagement_reports")
-    .update({
-      resolved_at: new Date().toISOString(),
-      resolved_by: user.id
-    })
-    .eq("id", reportId);
+  const client = await getClient(); const user = await getOwnerAuthUser();
+  const result = await client.from("engagement_reports").update({ resolved_at: new Date().toISOString(), resolved_by: user.id }).eq("id", reportId);
+  if (result.error) throw result.error;
+}
 
-  if (result.error) {
-    throw result.error;
-  }
+// ===== BAN機能 =====
+async function banUser(userId, reason, expiresAt) {
+  const client = await getClient(); if (!client) throw new Error("Supabase の設定がまだ入ってない。");
+  const payload = { user_id: userId, reason: reason, expires_at: expiresAt || null };
+  const result = await client.from("engagement_bans").upsert(payload, { onConflict: "user_id" });
+  if (result.error) throw result.error;
+}
+
+async function fetchBans() {
+  const client = await getClient(); if (!client) throw new Error("Supabase の設定がまだ入ってない。");
+  const result = await client.from("engagement_bans").select("user_id, reason, expires_at, created_at").order("created_at", { ascending: false });
+  if (result.error) throw result.error; return result.data || [];
+}
+
+async function unbanUser(userId) {
+  const client = await getClient(); if (!client) throw new Error("Supabase の設定がまだ入ってない。");
+  const result = await client.from("engagement_bans").delete().eq("user_id", userId);
+  if (result.error) throw result.error;
 }
 
 function inferItemLabel(target, fallback) {
-  if (target.dataset.itemLabel) {
-    return target.dataset.itemLabel;
-  }
-
-  const container =
-    target.closest(".download-card, .card, .seed-card, section") || target.parentElement;
-
-  if (!container) {
-    return fallback;
-  }
-
+  if (target.dataset.itemLabel) return target.dataset.itemLabel;
+  const container = target.closest(".download-card, .card, .seed-card, section") || target.parentElement;
+  if (!container) return fallback;
   const labelSource = container.querySelector("h1, h2, h3, .seed");
   return labelSource ? labelSource.textContent.trim() : fallback;
 }
 
 function createSetupNotice() {
-  return createElement(
-    "div",
-    "cf-interactions__setup",
-    "共有コメントをご利用いただくには、site-interactions-config.js に Supabase の URL と publishable key を設定し、SQL を実行してください。ownerEmail は削除と通報管理に使用されます。"
-  );
+  return createElement("div", "cf-interactions__setup", "共有コメントをご利用いただくには、site-interactions-config.js に Supabase の URL と publishable key を設定し、SQL を実行してください。ownerEmail は削除と通報管理に使用されます。");
 }
 
 function buildCommentCard(context, comment) {
@@ -1060,557 +448,195 @@ function buildCommentCard(context, comment) {
   const reportIcon = createElement("span", "cf-interactions__report-icon", "!");
   const reportLabel = createElement("span", "cf-interactions__report-label", "REPORT");
   const reportText = createElement("span", "cf-interactions__report-text", "通報");
-  reportButton.type = "button";
-  reportButton.title = "このコメントを通報します";
+  reportButton.type = "button"; reportButton.title = "このコメントを通報します";
   reportButton.setAttribute("aria-label", "このコメントを通報します");
-  reportButton.appendChild(reportIcon);
-  reportButton.appendChild(reportLabel);
-  reportButton.appendChild(reportText);
+  reportButton.appendChild(reportIcon); reportButton.appendChild(reportLabel); reportButton.appendChild(reportText);
   reportButton.addEventListener("click", async function () {
-    const reason = await openReportDialog({
-      body: "問題の内容が分かるように、通報理由をご入力ください。送信した内容は owner ページの一覧で確認されます。",
-      eyebrow: "通報",
-      chromeLabel: "REPORT LINK",
-      chromeState: "READY",
-      confirmText: "通報する",
-      errorText: "通報理由をご入力ください。",
-      hint: "短くても大丈夫です。内容が分かる文章でご入力ください。",
-      infoItems: [
-        "このコメントと理由が owner 側の通報一覧に送信されます。",
-        "内容が確認されるまで、あなたの画面ではこのコメントはそのまま表示されます。",
-        "スパム・暴言・荒らしなど、問題点が分かる書き方で送ってください。"
-      ],
-      infoTitle: "送信内容の扱い",
-      label: "通報理由",
-      placeholder: "例: 不快な表現が含まれています",
-      title: "コメントを通報"
-    });
-    if (!reason) {
-      return;
-    }
-
-    context.statusMessage = "通報を送信しています...";
-    context.statusTone = "";
-    context.render();
-
-    try {
-      await createReport(comment, reason);
-      context.statusMessage = "通報を送信しました。owner ページの一覧で確認できます。";
-      context.statusTone = "ok";
-      context.render();
-    } catch (error) {
-      context.statusMessage = friendlyError(error);
-      context.statusTone = "error";
-      context.render();
-    }
+    const reason = await openReportDialog({ body: "問題の内容が分かるように、通報理由をご入力ください。送信した内容は owner ページの一覧で確認されます。", eyebrow: "通報", chromeLabel: "REPORT LINK", chromeState: "READY", confirmText: "通報する", errorText: "通報理由をご入力ください。", hint: "短くても大丈夫です。内容が分かる文章でご入力ください。", infoItems: ["このコメントと理由が owner 側の通報一覧に送信されます。", "内容が確認されるまで、あなたの画面ではこのコメントはそのまま表示されます。", "スパム・暴言・荒らしなど、問題点が分かる書き方で送ってください。"], infoTitle: "送信内容の扱い", label: "通報理由", placeholder: "例: 不快な表現が含まれています", title: "コメントを通報" });
+    if (!reason) return;
+    context.statusMessage = "通報を送信しています..."; context.statusTone = ""; context.render();
+    try { await createReport(comment, reason); context.statusMessage = "通報を送信しました。owner ページの一覧で確認できます。"; context.statusTone = "ok"; context.render(); }
+    catch (error) { context.statusMessage = friendlyError(error); context.statusTone = "error"; context.render(); }
   });
-
   authorWrap.appendChild(author);
-  if (comment && comment.is_owner) {
-    const badge = createElement(
-      "span",
-      "cf-interactions__badge cf-interactions__badge--owner",
-      "管理者"
-    );
-    badge.title = "管理者コメント";
-    authorWrap.appendChild(badge);
-  }
-
-  head.appendChild(authorWrap);
-  head.appendChild(time);
-  actions.appendChild(reportButton);
-
+  if (comment && comment.is_owner) { const badge = createElement("span", "cf-interactions__badge cf-interactions__badge--owner", "管理者"); badge.title = "管理者コメント"; authorWrap.appendChild(badge); }
+  head.appendChild(authorWrap); head.appendChild(time); actions.appendChild(reportButton);
   if (clientState.owner) {
-    const deleteButton = createElement("button", "cf-interactions__delete", "削除");
-    deleteButton.type = "button";
+    const deleteButton = createElement("button", "cf-interactions__delete", "削除"); deleteButton.type = "button";
     deleteButton.addEventListener("click", async function () {
-      const ok = await openConfirmDialog({
-        body: "このコメントを削除しますか？この操作は元に戻せません。",
-        eyebrow: "削除",
-        confirmText: "削除する",
-        title: "コメントを削除",
-        tone: "danger"
-      });
-      if (!ok) {
-        return;
-      }
-
-      context.statusMessage = "削除しています...";
-      context.statusTone = "";
-      context.render();
-
-      try {
-        await deleteComment(comment.id);
-        await context.reload();
-        context.statusMessage = "コメントを削除しました。";
-        context.statusTone = "ok";
-        context.render();
-      } catch (error) {
-        context.statusMessage = friendlyError(error);
-        context.statusTone = "error";
-        context.render();
-      }
+      const ok = await openConfirmDialog({ body: "このコメントを削除しますか？この操作は元に戻せません。", eyebrow: "削除", confirmText: "削除する", title: "コメントを削除", tone: "danger" });
+      if (!ok) return;
+      context.statusMessage = "削除しています..."; context.statusTone = ""; context.render();
+      try { await deleteComment(comment.id); await context.reload(); context.statusMessage = "コメントを削除しました。"; context.statusTone = "ok"; context.render(); }
+      catch (error) { context.statusMessage = friendlyError(error); context.statusTone = "error"; context.render(); }
     });
     actions.appendChild(deleteButton);
   }
-
-  card.appendChild(head);
-  card.appendChild(body);
-  card.appendChild(actions);
-  return card;
+  card.appendChild(head); card.appendChild(body); card.appendChild(actions); return card;
 }
 
 function friendlyError(error) {
-  if (!error) {
-    return "処理に失敗しました。時間をおいて再度お試しください。";
-  }
-
+  if (!error) return "処理に失敗しました。時間をおいて再度お試しください。";
   const message = String(error.message || error);
-
-  if (/anonymous/i.test(message)) {
-    return "古い匿名ログイン設定が残っている可能性があります。ページを再読み込みしてください。";
-  }
-
-  if (/abort|timeout|timed out/i.test(message)) {
-    return "Supabase への通信がタイムアウトしました。ネットワークまたは Supabase の状態をご確認ください。";
-  }
-
-  if (/Invalid API key/i.test(message) || /401/.test(message)) {
-    return "Supabase の URL または anon key が正しくありません。設定をご確認ください。";
-  }
-
-  if (/row-level security/i.test(message) || /permission/i.test(message)) {
-    return "権限設定により処理が拒否されました。SQL のポリシーをご確認ください。";
-  }
-
-  if (/engagement_reports/i.test(message) && /exist/i.test(message)) {
-    return "通報用テーブルがまだ作成されていません。更新後の SQL を再度実行してください。";
-  }
-
+  if (/anonymous/i.test(message)) return "古い匿名ログイン設定が残っている可能性があります。ページを再読み込みしてください。";
+  if (/abort|timeout|timed out/i.test(message)) return "Supabase への通信がタイムアウトしました。ネットワークまたは Supabase の状態をご確認ください。";
+  if (/Invalid API key/i.test(message) || /401/.test(message)) return "Supabase の URL または anon key が正しくありません。設定をご確認ください。";
+  if (/engagement_bans/i.test(message) || (/row-level security/i.test(message) && /insert/i.test(message))) return "あなたは現在コメントを投稿できません。期間限定または無期限の制限が設定されている可能性があります。";
+  if (/row-level security/i.test(message) || /permission/i.test(message)) return "権限設定により処理が拒否されました。SQL のポリシーをご確認ください。";
+  if (/engagement_reports/i.test(message) && /exist/i.test(message)) return "通報用テーブルがまだ作成されていません。更新後の SQL を再度実行してください。";
   return message;
 }
 
 function createWidgetContext(target, options) {
   const mode = options.mode || "card";
   const context = {
-    comments: [],
-    headingText: options.heading || (mode === "page" ? "ひとこと掲示板" : ""),
-    introText: options.intro || "",
-    itemLabel: options.itemLabel || inferItemLabel(target, options.id),
-    likeCount: 0,
-    liked: false,
-    loading: true,
+    comments: [], headingText: options.heading || (mode === "page" ? "ひとこと掲示板" : " "), introText: options.intro || " ",
+    itemLabel: options.itemLabel || inferItemLabel(target, options.id), likeCount: 0, liked: false, loading: true,
     metaText: options.metaText || (mode === "page" ? "共有コメントを読み込んでいます" : "共有リアクションを読み込んでいます"),
-    mode: mode,
-    noteText:
-      options.note ||
-      "ログインなしでコメントできます。コメントといいねは共有保存されます。コメント欄では画像は送れません。通報は owner 側の一覧へ送信されます。",
-    panelOpen: Boolean(options.expanded),
-    setupNotice: null,
-    statusMessage: "",
-    statusTone: "",
-    target: target,
-    thread: threadKey(options.id),
+    mode: mode, noteText: options.note || "ログインなしでコメントできます。コメントといいねは共有保存されます。コメント欄では画像は送れません。通報は owner 側の一覧へ送信されます。",
+    panelOpen: Boolean(options.expanded), setupNotice: null, statusMessage: " ", statusTone: " ", target: target, thread: threadKey(options.id),
     viewerName: normalizeDisplayName(readDisplayName()) || defaultDisplayName()
   };
-
   const root = createElement("section", "cf-interactions cf-interactions--" + mode);
-  const heading = context.headingText
-    ? createElement("h3", "cf-interactions__heading", context.headingText)
-    : null;
-  const intro = context.introText
-    ? createElement("p", "cf-interactions__intro", context.introText)
-    : null;
+  const heading = context.headingText ? createElement("h3", "cf-interactions__heading", context.headingText) : null;
+  const intro = context.introText ? createElement("p", "cf-interactions__intro", context.introText) : null;
   const status = createElement("p", "cf-interactions__status");
   const bar = createElement("div", "cf-interactions__bar");
-  const likeButton = createElement("button", "cf-interactions__action");
-  likeButton.type = "button";
-  const likeText = createElement("span", "", "いいね");
-  const likeCount = createElement("span", "cf-interactions__count", "0");
-  const commentButton = createElement("button", "cf-interactions__action");
-  commentButton.type = "button";
-  const commentText = createElement("span", "", "コメント");
-  const commentCount = createElement("span", "cf-interactions__count", "0");
+  const likeButton = createElement("button", "cf-interactions__action"); likeButton.type = "button";
+  const likeText = createElement("span", " ", "いいね"); const likeCount = createElement("span", "cf-interactions__count", "0");
+  const commentButton = createElement("button", "cf-interactions__action"); commentButton.type = "button";
+  const commentText = createElement("span", " ", "コメント"); const commentCount = createElement("span", "cf-interactions__count", "0");
   const meta = createElement("span", "cf-interactions__meta-text", context.metaText);
   const panel = createElement("div", "cf-interactions__panel");
   const form = createElement("form", "cf-interactions__form");
   const nameField = createElement("label", "cf-interactions__field");
   const nameLabel = createElement("span", "cf-interactions__label", "名前");
-  const nameInput = createElement("input", "cf-interactions__input");
-  nameInput.type = "text";
-  nameInput.maxLength = MAX_DISPLAY_NAME_LENGTH;
-  nameInput.autocomplete = "nickname";
-  nameInput.placeholder = defaultDisplayName();
-  nameInput.value = context.viewerName;
+  const nameInput = createElement("input", "cf-interactions__input"); nameInput.type = "text"; nameInput.maxLength = MAX_DISPLAY_NAME_LENGTH; nameInput.autocomplete = "nickname"; nameInput.placeholder = defaultDisplayName(); nameInput.value = context.viewerName;
   const textField = createElement("label", "cf-interactions__field");
-  const textLabel = createElement(
-    "span",
-    "cf-interactions__label",
-    options.formLabel || "コメント"
-  );
-  const textArea = createElement("textarea", "cf-interactions__textarea");
-  textArea.maxLength = MAX_COMMENT_LENGTH;
-  textArea.placeholder = options.placeholder || "ご感想をご入力ください";
+  const textLabel = createElement("span", "cf-interactions__label", options.formLabel || "コメント");
+  const textArea = createElement("textarea", "cf-interactions__textarea"); textArea.maxLength = MAX_COMMENT_LENGTH; textArea.placeholder = options.placeholder || "ご感想をご入力ください";
   const footer = createElement("div", "cf-interactions__footer");
   const note = createElement("span", "cf-interactions__note", context.noteText);
-  const submit = createElement("button", "cf-interactions__submit", "送信");
-  submit.type = "submit";
+  const submit = createElement("button", "cf-interactions__submit", "送信"); submit.type = "submit";
   const list = createElement("div", "cf-interactions__list");
-  const empty = createElement(
-    "p",
-    "cf-interactions__empty",
-    "まだコメントはありません。最初のひとことをぜひお寄せください。"
-  );
-
-  likeButton.appendChild(likeText);
-  likeButton.appendChild(likeCount);
-  commentButton.appendChild(commentText);
-  commentButton.appendChild(commentCount);
-  bar.appendChild(likeButton);
-  bar.appendChild(commentButton);
-  bar.appendChild(meta);
-
-  nameField.appendChild(nameLabel);
-  nameField.appendChild(nameInput);
-  textField.appendChild(textLabel);
-  textField.appendChild(textArea);
-  footer.appendChild(note);
-  footer.appendChild(submit);
-  form.appendChild(nameField);
-  form.appendChild(textField);
-  form.appendChild(footer);
-  panel.appendChild(form);
-  panel.appendChild(list);
-
-  if (heading) {
-    root.appendChild(heading);
-  }
-  if (intro) {
-    root.appendChild(intro);
-  }
-  root.appendChild(status);
-  root.appendChild(bar);
-  root.appendChild(panel);
-  target.appendChild(root);
-
-  context.elements = {
-    commentButton: commentButton,
-    commentCount: commentCount,
-    empty: empty,
-    likeButton: likeButton,
-    likeCount: likeCount,
-    list: list,
-    meta: meta,
-    nameInput: nameInput,
-    panel: panel,
-    status: status,
-    submit: submit,
-    textArea: textArea
-  };
-
+  const empty = createElement("p", "cf-interactions__empty", "まだコメントはありません。最初のひとことをぜひお寄せください。");
+  likeButton.appendChild(likeText); likeButton.appendChild(likeCount);
+  commentButton.appendChild(commentText); commentButton.appendChild(commentCount);
+  bar.appendChild(likeButton); bar.appendChild(commentButton); bar.appendChild(meta);
+  nameField.appendChild(nameLabel); nameField.appendChild(nameInput);
+  textField.appendChild(textLabel); textField.appendChild(textArea);
+  footer.appendChild(note); footer.appendChild(submit);
+  form.appendChild(nameField); form.appendChild(textField); form.appendChild(footer);
+  panel.appendChild(form); panel.appendChild(list);
+  if (heading) root.appendChild(heading); if (intro) root.appendChild(intro);
+  root.appendChild(status); root.appendChild(bar); root.appendChild(panel); target.appendChild(root);
+  context.elements = { commentButton: commentButton, commentCount: commentCount, empty: empty, likeButton: likeButton, likeCount: likeCount, list: list, meta: meta, nameInput: nameInput, panel: panel, status: status, submit: submit, textArea: textArea };
   context.render = function () {
     context.elements.likeCount.textContent = String(context.likeCount);
     context.elements.commentCount.textContent = String(context.comments.length);
     context.elements.likeButton.classList.toggle("is-liked", context.liked);
-    context.elements.likeButton.disabled = context.loading;
-    context.elements.commentButton.disabled = context.loading;
-    context.elements.submit.disabled = context.loading;
-    context.elements.nameInput.disabled = context.loading;
+    context.elements.likeButton.disabled = context.loading; context.elements.commentButton.disabled = context.loading; context.elements.submit.disabled = context.loading; context.elements.nameInput.disabled = context.loading;
     context.elements.likeButton.setAttribute("aria-pressed", context.liked ? "true" : "false");
-    context.elements.commentButton.setAttribute(
-      "aria-expanded",
-      context.panelOpen ? "true" : "false"
-    );
+    context.elements.commentButton.setAttribute("aria-expanded", context.panelOpen ? "true" : "false");
     context.elements.panel.classList.toggle("is-open", context.panelOpen);
     context.elements.meta.textContent = context.metaText;
-    context.elements.meta.classList.toggle("is-error", context.statusTone === "error");
-    context.elements.meta.classList.toggle("is-ok", context.statusTone === "ok");
+    context.elements.meta.classList.toggle("is-error", context.statusTone === "error"); context.elements.meta.classList.toggle("is-ok", context.statusTone === "ok");
     context.elements.status.textContent = context.statusMessage;
-    context.elements.status.classList.toggle("is-error", context.statusTone === "error");
-    context.elements.status.classList.toggle("is-ok", context.statusTone === "ok");
-
+    context.elements.status.classList.toggle("is-error", context.statusTone === "error"); context.elements.status.classList.toggle("is-ok", context.statusTone === "ok");
     context.elements.list.innerHTML = "";
-    if (!context.comments.length) {
-      context.elements.list.appendChild(context.elements.empty);
-    } else {
-      context.comments.forEach(function (comment) {
-        context.elements.list.appendChild(buildCommentCard(context, comment));
-      });
-    }
+    if (!context.comments.length) context.elements.list.appendChild(context.elements.empty);
+    else context.comments.forEach(function (comment) { context.elements.list.appendChild(buildCommentCard(context, comment)); });
   };
-
   context.reload = async function () {
-    if (!hasSupabaseConfig()) {
-      context.loading = false;
-      context.statusMessage = "";
-      context.metaText = "共有コメントの設定をお待ちください";
-      if (!context.setupNotice) {
-        context.setupNotice = createSetupNotice();
-        context.target.appendChild(context.setupNotice);
-      }
-      context.render();
-      return;
-    }
-
-    context.loading = true;
-    context.statusMessage = "";
-    context.metaText = "共有データを読み込んでいます";
-    context.render();
-
+    if (!hasSupabaseConfig()) { context.loading = false; context.statusMessage = ""; context.metaText = "共有コメントの設定をお待ちください"; if (!context.setupNotice) { context.setupNotice = createSetupNotice(); context.target.appendChild(context.setupNotice); } context.render(); return; }
+    context.loading = true; context.statusMessage = ""; context.metaText = "共有データを読み込んでいます"; context.render();
     try {
       const state = await fetchThreadState(context.thread);
-      context.comments = state.comments;
-      context.likeCount = state.likes;
-      context.liked = state.liked;
-      context.metaText = clientState.owner
-        ? "owner として閲覧中です。削除ボタンが使えます。"
-        : "ログインなしでコメントできます";
+      context.comments = state.comments; context.likeCount = state.likes; context.liked = state.liked;
+      context.metaText = clientState.owner ? "owner として閲覧中です。削除ボタンが使えます。" : "ログインなしでコメントできます";
       context.statusTone = "";
-    } catch (error) {
-      context.metaText = "読み込みに失敗しました";
-      context.statusMessage = friendlyError(error);
-      context.statusTone = "error";
-    } finally {
-      context.loading = false;
-      context.render();
-    }
+    } catch (error) { context.metaText = "読み込みに失敗しました"; context.statusMessage = friendlyError(error); context.statusTone = "error"; }
+    finally { context.loading = false; context.render(); }
   };
-
   likeButton.addEventListener("click", async function () {
-    context.loading = true;
-    context.statusMessage = "";
-    context.metaText = "いいねを更新しています";
-    context.render();
-
-    try {
-      await toggleLike(context.thread, context.liked);
-      await context.reload();
-    } catch (error) {
-      context.loading = false;
-      context.statusMessage = friendlyError(error);
-      context.statusTone = "error";
-      context.render();
-    }
+    context.loading = true; context.statusMessage = ""; context.metaText = "いいねを更新しています"; context.render();
+    try { await toggleLike(context.thread, context.liked); await context.reload(); }
+    catch (error) { context.loading = false; context.statusMessage = friendlyError(error); context.statusTone = "error"; context.render(); }
   });
-
-  commentButton.addEventListener("click", function () {
-    context.panelOpen = !context.panelOpen;
-    context.render();
-  });
-
+  commentButton.addEventListener("click", function () { context.panelOpen = !context.panelOpen; context.render(); });
   nameInput.addEventListener("change", async function () {
-    const displayName =
-      normalizeDisplayName(nameInput.value) || context.viewerName || defaultDisplayName();
-
-    context.viewerName = displayName;
-    nameInput.value = displayName;
-    saveDisplayName(displayName);
-
-    context.loading = true;
-    context.statusMessage = "";
-    context.statusTone = "";
-    context.metaText = "名前を更新しています";
-    context.render();
-
-    try {
-      await syncDisplayName(displayName);
-      await context.reload();
-      context.statusMessage = "名前を更新しました。";
-      context.statusTone = "ok";
-    } catch (error) {
-      context.loading = false;
-      context.statusMessage = friendlyError(error);
-      context.statusTone = "error";
-    } finally {
-      context.loading = false;
-      context.render();
-    }
+    const displayName = normalizeDisplayName(nameInput.value) || context.viewerName || defaultDisplayName();
+    context.viewerName = displayName; nameInput.value = displayName; saveDisplayName(displayName);
+    context.loading = true; context.statusMessage = ""; context.statusTone = ""; context.metaText = "名前を更新しています"; context.render();
+    try { await syncDisplayName(displayName); await context.reload(); context.statusMessage = "名前を更新しました。"; context.statusTone = "ok"; }
+    catch (error) { context.loading = false; context.statusMessage = friendlyError(error); context.statusTone = "error"; }
+    finally { context.loading = false; context.render(); }
   });
-
-  function rejectCommentImages(message) {
-    context.statusMessage = message;
-    context.statusTone = "error";
-    context.metaText = "コメント欄ではテキストのみ送れます";
-    context.render();
-  }
-
-  textArea.addEventListener("paste", function (event) {
-    if (!dataTransferHasImage(event.clipboardData)) {
-      return;
-    }
-
-    event.preventDefault();
-    rejectCommentImages("コメント欄には画像を貼り付けできません。");
-  });
-
-  textArea.addEventListener("drop", function (event) {
-    if (!dataTransferHasImage(event.dataTransfer)) {
-      return;
-    }
-
-    event.preventDefault();
-    rejectCommentImages("コメント欄には画像をドロップできません。");
-  });
-
-  textArea.addEventListener("dragover", function (event) {
-    if (!dataTransferHasImage(event.dataTransfer)) {
-      return;
-    }
-
-    event.preventDefault();
-  });
-
+  function rejectCommentImages(message) { context.statusMessage = message; context.statusTone = "error"; context.metaText = "コメント欄ではテキストのみ送れます"; context.render(); }
+  textArea.addEventListener("paste", function (event) { if (!dataTransferHasImage(event.clipboardData)) return; event.preventDefault(); rejectCommentImages("コメント欄には画像を貼り付けできません。"); });
+  textArea.addEventListener("drop", function (event) { if (!dataTransferHasImage(event.dataTransfer)) return; event.preventDefault(); rejectCommentImages("コメント欄には画像をドロップできません。"); });
+  textArea.addEventListener("dragover", function (event) { if (!dataTransferHasImage(event.dataTransfer)) return; event.preventDefault(); });
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
     const text = textArea.value.trim();
-    const displayName =
-      normalizeDisplayName(nameInput.value) || context.viewerName || defaultDisplayName();
-
-    if (!text) {
-      textArea.focus();
-      return;
-    }
-
-    context.viewerName = displayName;
-    nameInput.value = displayName;
-    saveDisplayName(displayName);
-
-    context.loading = true;
-    context.statusMessage = "";
-    context.metaText = "コメントを送信しています";
-    context.render();
-
-    try {
-      await syncDisplayName(displayName);
-      await addComment(context, text, displayName);
-      textArea.value = "";
-      context.panelOpen = true;
-      await context.reload();
-      context.statusMessage = "コメントを送信しました。";
-      context.statusTone = "ok";
-      context.render();
-    } catch (error) {
-      context.loading = false;
-      context.statusMessage = friendlyError(error);
-      context.statusTone = "error";
-      context.render();
-    }
+    const displayName = normalizeDisplayName(nameInput.value) || context.viewerName || defaultDisplayName();
+    if (!text) { textArea.focus(); return; }
+    context.viewerName = displayName; nameInput.value = displayName; saveDisplayName(displayName);
+    context.loading = true; context.statusMessage = ""; context.metaText = "コメントを送信しています"; context.render();
+    try { await syncDisplayName(displayName); await addComment(context, text, displayName); textArea.value = ""; context.panelOpen = true; await context.reload(); context.statusMessage = "コメントを送信しました。"; context.statusTone = "ok"; context.render(); }
+    catch (error) { context.loading = false; context.statusMessage = friendlyError(error); context.statusTone = "error"; context.render(); }
   });
-
-  context.render();
-  widgetContexts.add(context);
-  return context;
+  context.render(); widgetContexts.add(context); return context;
 }
 
-function refreshAllWidgets() {
-  widgetContexts.forEach(function (context) {
-    context.reload();
-  });
-}
+function refreshAllWidgets() { widgetContexts.forEach(function (context) { context.reload(); }); }
 
 function mountInteraction(target, options) {
-  if (!target || target.dataset.cfInteractionsMounted === "true") {
-    return null;
-  }
-
+  if (!target || target.dataset.cfInteractionsMounted === "true") return null;
   target.dataset.cfInteractionsMounted = "true";
-  const context = createWidgetContext(target, options);
-  context.reload();
-  return context;
+  const context = createWidgetContext(target, options); context.reload(); return context;
 }
 
 function mountAll() {
   document.querySelectorAll("[data-page-engagement]").forEach(function (target) {
-    mountInteraction(target, {
-      expanded: target.dataset.engagementExpanded === "true",
-      formLabel: target.dataset.formLabel,
-      heading: target.dataset.engagementHeading,
-      id: target.dataset.pageEngagement,
-      intro: target.dataset.engagementIntro,
-      itemLabel: target.dataset.itemLabel,
-      metaText: target.dataset.metaText,
-      mode: "page",
-      note: target.dataset.engagementNote,
-      placeholder: target.dataset.commentPlaceholder
-    });
+    mountInteraction(target, { expanded: target.dataset.engagementExpanded === "true", formLabel: target.dataset.formLabel, heading: target.dataset.engagementHeading, id: target.dataset.pageEngagement, intro: target.dataset.engagementIntro, itemLabel: target.dataset.itemLabel, metaText: target.dataset.metaText, mode: "page", note: target.dataset.engagementNote, placeholder: target.dataset.commentPlaceholder });
   });
-
   document.querySelectorAll("[data-entry-engagement]").forEach(function (target) {
-    mountInteraction(target, {
-      formLabel: target.dataset.formLabel,
-      id: target.dataset.entryEngagement,
-      intro: target.dataset.engagementIntro,
-      itemLabel: target.dataset.itemLabel,
-      metaText: target.dataset.metaText,
-      mode: "card",
-      note: target.dataset.engagementNote,
-      placeholder: target.dataset.commentPlaceholder
-    });
+    mountInteraction(target, { formLabel: target.dataset.formLabel, id: target.dataset.entryEngagement, intro: target.dataset.engagementIntro, itemLabel: target.dataset.itemLabel, metaText: target.dataset.metaText, mode: "card", note: target.dataset.engagementNote, placeholder: target.dataset.commentPlaceholder });
   });
-
   if (!observerStarted) {
     observerStarted = true;
     const observer = new MutationObserver(function (mutations) {
       mutations.forEach(function (mutation) {
         mutation.addedNodes.forEach(function (node) {
-          if (!(node instanceof HTMLElement)) {
-            return;
-          }
-
-          if (node.matches("[data-entry-engagement], [data-page-engagement]")) {
-            mountAll();
-            return;
-          }
-
-          if (
-            node.querySelector &&
-            node.querySelector("[data-entry-engagement], [data-page-engagement]")
-          ) {
-            mountAll();
-          }
+          if (!(node instanceof HTMLElement)) return;
+          if (node.matches("[data-entry-engagement], [data-page-engagement]")) { mountAll(); return; }
+          if (node.querySelector && node.querySelector("[data-entry-engagement], [data-page-engagement]")) mountAll();
         });
       });
     });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  mountAll();
-});
+document.addEventListener("DOMContentLoaded", function () { mountAll(); });
 
 window.CfInteractions = {
-  getClient: getClient,
-  isOwnerUser: isOwnerUser,
-  mountAll: mountAll,
-  mountEntry: function (target, options) {
-    return mountInteraction(target, Object.assign({ mode: "card" }, options || {}));
-  },
-  mountPage: function (target, options) {
-    return mountInteraction(target, Object.assign({ mode: "page" }, options || {}));
-  },
-  fetchReports: fetchReports,
-  resolveReport: resolveReport,
-  deleteComment: deleteComment,
-  signOutCurrentUser: signOutCurrentUser,
-  openConfirmDialog: openConfirmDialog,
-  sendOwnerPasswordReset: sendOwnerPasswordReset,
-  signInOwnerWithPassword: signInOwnerWithPassword
+  getClient: getClient, isOwnerUser: isOwnerUser, mountAll: mountAll,
+  mountEntry: function (target, options) { return mountInteraction(target, Object.assign({ mode: "card" }, options || {})); },
+  mountPage: function (target, options) { return mountInteraction(target, Object.assign({ mode: "page" }, options || {})); },
+  fetchReports: fetchReports, resolveReport: resolveReport, deleteComment: deleteComment,
+  signOutCurrentUser: signOutCurrentUser, openConfirmDialog: openConfirmDialog,
+  sendOwnerPasswordReset: sendOwnerPasswordReset, signInOwnerWithPassword: signInOwnerWithPassword,
+  banUser: banUser, fetchBans: fetchBans, unbanUser: unbanUser, getVisitorUid: getVisitorUid,
+  configureConfirmDialog: configureConfirmDialog, showConfirmDialog: showConfirmDialog,
+  closeConfirmDialog: closeConfirmDialog, updateDialogFieldCounter: updateDialogFieldCounter,
+  ensureConfirmDialog: ensureConfirmDialog
 };
 
 export {
-  deleteComment,
-  fetchReports,
-  getClient,
-  getVisitorUid,
-  isOwnerUser,
-  openConfirmDialog,
-  resolveReport,
-  sendOwnerPasswordReset,
-  signOutCurrentUser,
-  signInOwnerWithPassword
+  banUser, closeConfirmDialog, configureConfirmDialog, deleteComment, ensureConfirmDialog,
+  fetchBans, fetchReports, getClient, getVisitorUid, isOwnerUser, openConfirmDialog,
+  resolveReport, sendOwnerPasswordReset, showConfirmDialog, signInOwnerWithPassword,
+  signOutCurrentUser, unbanUser, updateDialogFieldCounter
 };

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <title>Conbi Fan - Blog Post</title>
+  <link rel="stylesheet" href="site-interactions.css">
+  <style>
+    :root {
+      --bg: #09111f;
+      --panel: rgba(15, 23, 42, 0.84);
+      --border: rgba(148, 163, 184, 0.18);
+      --accent: #38bdf8;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.2), transparent 28%), linear-gradient(180deg, #0a1326, var(--bg));
+    }
+    a { color: #bae6fd; text-decoration: none; }
+    main { width: min(920px, 100%); margin: 0 auto; padding: 48px 24px 64px; }
+    .status { margin: 0 0 18px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: rgba(15, 23, 42, 0.7); color: var(--muted); }
+    footer { padding: 24px; text-align: center; color: var(--muted); background: rgba(2, 6, 23, 0.44); }
+    .footer-links { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 18px; font-size: 0.92rem; }
+    .footer-links a { color: #bae6fd; }
+    /* blog.js が生成する記事詳細のスタイル */
+    .blog-post--detail .blog-post__title { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.2; margin: 0 0 12px; color: #f8fafc; }
+    .blog-post--detail .blog-post__meta { color: var(--muted); font-size: 0.92rem; margin: 0 0 24px; }
+    .blog-post--detail .blog-post__summary { color: #e0f2fe; font-weight: 700; line-height: 1.7; white-space: pre-wrap; margin: 0 0 24px; padding: 16px; border-radius: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--border); }
+    .blog-post--detail .blog-post__body { line-height: 1.9; white-space: pre-wrap; word-break: break-word; margin: 0 0 32px; }
+    .blog-post--detail .blog-post__image { display: block; width: 100%; margin: 24px 0; border-radius: 18px; border: 1px solid var(--border); object-fit: cover; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="status" data-blog-post-status>読み込んでいます...</p>
+    <div data-blog-post-article></div>
+    <p style="margin-top: 24px;"><a href="blog.html">← ブログ一覧へ戻る</a></p>
+  </main>
+
+  <footer>
+    © 2026 Conbi Fan
+    <div class="footer-links">
+      <a href="index.html">ホーム</a>
+      <a href="blog.html">ブログ</a>
+      <a href="rules.html">コメントルール</a>
+    </div>
+  </footer>
+
+  <script src="site-interactions-config.js"></script>
+  <script type="module" src="site-interactions.js"></script>
+  <script type="module" src="blog.js"></script>
+</body>
+</html>
